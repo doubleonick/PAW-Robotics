@@ -1,0 +1,9 @@
+RAY: You have now seen all five basic vehicles.
+
+RAY: In this game, I will show you a vehicle running in an arena. Your task is to identify which vehicle — or which combination of vehicles — you are watching.
+
+RAY: Some will be straightforward. Others will be compounds: two or three behaviours wired together, producing something more complex.
+
+RAY: Watch carefully. The environment is designed to make the behaviour visible. When the robot stops, make your selection and press Verify.
+
+RAY: Let's begin.

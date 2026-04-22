@@ -1,0 +1,7 @@
+RAY: This is Vehicle 2a, or Cowardice, or Fear.
+
+RAY: The light sensors this time. Each LDR is wired to the motor on the same side — again, ipsilateral. More light on the left means the left motor runs faster.
+
+RAY: The robot turns away from the light source and accelerates as it escapes. It never stops — the brighter the light, the faster it runs.
+
+RAY: Braitenberg called this one Fear. Watch.

@@ -1,0 +1,7 @@
+RAY: Vehicle 3a, or Love.
+
+RAY: Now we use neurons. Each neuron has a positive bias — a constant resting drive — wired to a motor. The robot would move forward on its own.
+
+RAY: But each LDR is wired to inhibit the neuron on the same side. More light means less drive to that motor. The robot slows on the brighter side, turning toward the source.
+
+RAY: Near the light, both motors slow. The robot settles close by, oriented toward it. Braitenberg saw affection in this. Watch.

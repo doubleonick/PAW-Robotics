@@ -1,0 +1,7 @@
+RAY: This is Vehicle 1, or Obstacle Avoidance.
+
+RAY: The IR sensors at the front detect nearby objects. Each sensor is wired directly to the motor on the same side — what we call ipsilateral, or same-side, wiring.
+
+RAY: When the left sensor detects something close, the left motor speeds up. The robot steers away. It is a simple reflex, but it works reliably.
+
+RAY: Watch how it behaves in the arena.

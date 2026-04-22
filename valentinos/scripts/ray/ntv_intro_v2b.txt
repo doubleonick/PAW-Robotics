@@ -1,0 +1,7 @@
+RAY: Vehicle 2b, or Aggression.
+
+RAY: The wiring is crossed this time — contralateral. Left sensor drives the right motor, right sensor drives the left motor.
+
+RAY: More light on the left makes the robot turn toward it. It accelerates as it approaches — and does not slow down. Braitenberg noted that this behaviour looks remarkably hostile.
+
+RAY: Watch.

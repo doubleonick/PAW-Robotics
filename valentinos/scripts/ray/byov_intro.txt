@@ -1,0 +1,7 @@
+RAY: In Build Your Own Vehicle, you are the engineer.
+
+RAY: Use the wiring editor to connect sensors to motors — or route signals through neurons to shape them first.
+
+RAY: Then watch what happens. There is no correct answer here — only discovery.
+
+RAY: When you are ready, press Run. You can edit the wiring or the arena at any time and run again.

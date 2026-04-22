@@ -1,0 +1,7 @@
+RAY: Vehicle 3b, or Explorer.
+
+RAY: The same neuron-and-bias structure as Love — but the inhibition is crossed. Left light inhibits the right motor. Right light inhibits the left motor.
+
+RAY: The robot turns away from light sources, but gently. It seeks out darker regions of the arena, exploring away from any stimulus.
+
+RAY: You may notice that these responses generalise. A robot that avoids light will also slow near obstacles that cast shadows. One wired for love of light may show the same settling behaviour near any object that reflects it. Watch.

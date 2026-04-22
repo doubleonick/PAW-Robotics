@@ -1,0 +1,19 @@
+{
+    "width": 1.5,
+    "height": 1.5,
+    "wall_thickness": 0.05,
+    "light_sources": [
+        {
+            "x":  0.4,
+            "y":  0.4,
+            "intensity": 1.0,
+            "radius": 0.25
+        }
+    ],
+    "internal_walls": [],
+    "robot_start": {
+        "x": 0.0,
+        "y": 0.0,
+        "heading_deg": 90.0
+    }
+}
