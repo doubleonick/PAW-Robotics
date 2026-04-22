@@ -1,0 +1,7 @@
+RAY: Welcome to Robot Ethology!
+
+RAY: You are about to observe two robots — A and B — for three minutes. Watch carefully. You will need to figure out what rules govern their behavior.
+
+RAY: No hints about sensors, behaviors, or logic. Just watch, hypothesize, and test. You have 20 experiments.
+
+RAY: Press Continue when you are ready. Good luck!

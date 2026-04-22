@@ -1,0 +1,13 @@
+{
+    "width": 1.0,
+    "height": 2.0,
+    "wall_thickness": 0.05,
+    "light_sources": [
+        {
+            "x": 0.0,
+            "y": 0.20,
+            "intensity": 1.0,
+            "radius": 0.4
+        }
+    ]
+}
