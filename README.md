@@ -1,116 +1,34 @@
-# RoboSim
+# PAW-Robotics
+A suite of games written in Python that employ behavior based robotics within a PAW systems backdrop to explore ideas in robotics.
 
-A cross-platform Arduino robot simulator with a PyBullet physics backend and PyGame top-down renderer.
+This suite of games uses PyBullet as a 3D backend to create a series of environments and robots that aim to accurately reflect the functionality of physical robots for the purposes of letting people solve a variety of challenges using robotics principles and tools with or without a physical kit of hardware.  The frontend uses PyGame, and thus you have a 3D mathematical backend projected onto a 2D set of graphics and visual interactions.  There are aspects of the game that work around this by showing multiple points of view for a single event or activty.  For example, many of the games have a robot builder application and may use top, side, front and back views for things like sensor placement.
 
-## Quick start
+The set of games share some tools and resources.  For example, sensors and actuators are simulated using the same classes and logic, regardless of the game(s) in which they are used.  Similarly, environmental modules, such as light sources and walls are governed the same way across all games.  Each game is developed in such a way as to allow it to be a standalone applicaiton, however.  The gammification elements are intended to be optional, meaning each game may be used as a plainer pedagogical tool, or may be played within the context of a larger whole; a narrative that extends across game play.
 
-### 1 — Install Python 3.10+
+The overarching game, the idea or narrative theme that wraps everything together is that you, the player, are being guided by PAW BOt (sp, PAW-Bot?) to learn various behavior based robotics concepts, and unlock games and features that allow you to employ those concepts.  For reference, the games as they currently stand are:
 
-- **Windows**: https://python.org/downloads — tick "Add to PATH"
-- **macOS**: `brew install python` or https://python.org/downloads
-- **Linux**: `sudo apt install python3 python3-pip` (or your distro's equivalent)
+1. Valentino's Vehicles
+    a. Introduction: PAW-Bot introduces Valentino Braitenberg's vehicles concept, and demonstrates V1, V2a, V2b, V3a, and V3b, referring to them both by their "V#" designation, and their anthropomorphized designations: object avoidance, cowardice, aggressive, love, explore.
+    b. Build Your Own Robot: An open ended game in which you are asked to first, replicate the wiring of some version (altering resistence levels, use of neurons, neuron gain, etc) of the 5 fundamental vehicles.  You are then invited to create vehicles as you like, also modifying the environment as you see fit.
+    c. Name That Vehicle: you are shown a sequence of vehicles and must name what you see.  First you are shown, at random, some version of the classic five vehicles.  You are given multiple choice, and have three guesses to determine what you saw.  There are five rounds of this.  Another five rounds combines any two of the fundamental five.  Choices of pairs of behaviors are given, and you must select the right pair.  You have three guesses, and get partial credit (1/N, where N in this case is 2) for guessing each one of the constituent behaviors.  Following this, you have five rounds of guessing combinations of 3 robots.  After that, you may witness any number of behaviors in a single vehicle up to 3.  If you can accomplish the first 10 of these, you unlock Fixed Arbitration.
+   d. Hunting and Foraging: This may be played solo, or against another player.  If you choose to be a single player, you will be challenged to create a robot that either forages for light sources, which get consumed as your robot stays by them, or build a robot that hunts some implementation of one of the five fundamental vehicles.  Each time your robot consumes its target, you are presented with a new environment, and potentially new prey, or a greater number of prey.  A counter ticks down 3 minutes each round, stopping when your vehicle depleats its food source, or when the clock reaches 0.  You get a score based on how much time you had left (1 point per second), and how much of the food source(s) you consumed (there will be a formula for this, and 1 point per percentage consumed).
 
-### 2 — Install dependencies
 
-```bash
-cd robosim
-pip install -r requirements.txt
-```
+2. Fixed Arbitration: PAW introduces two robots: A and B, and explains that they are governed by fixed arbitration schemes.  As a robot ehtologist, your task is to observe both robots and take notes on what they do.  You will be given the names of eight possible behaviors, any number of which may be determining each robot's behavior.  You get 3 mintues of initial observation (this behavioral sequence will be recorded).  You then use a hierarchy builder to build hypothesis hierarchies for either robot A or robot B.  As you test your hypotheses on one or both robots, you get basic feedback as to whether you guessed correctly or not, and you get an updated look at how many of your 20 total experiments you have left.  If you solve both robots, PAW-Bot contratulates you, and the game ends with a win!  You unlock Force Field Frenzy!
 
-**Python 3.14 + 3.12 side-by-side (Windows):** use `py -3.12` to target 3.12 explicitly:
-```bash
-py -3.12 -m pip install -r requirements.txt
-```
+3. Force Field Frenzy!:  PAW introduces the idea of virtual field control.  Certain environmental sources act like attracting fields, while other sources act as repulsors.  The player is assigned increasingly difficult challenges for a given environment, and must use a GUI to create certain magnitudes, and valences of fields that are associated with certain types of environmental objects (e.g. lights, walls, color).  If you can successfully complete 5 challenges, you unlock State your Purpose.
 
-No conda, no Docker required.
+4. State Your Purpose: PAW introduces the idea of state machines.  PAW guides the player through simple two or three state state machines.  You unlock Maze Solver and Novel Behavior.
 
-### 3 — Run
+5. Maze Solver: The player is presented with mazes containing lights at their exits.  Some are just plain lights, some are polarized, some are colored with non-colored decoy lights.  For each maze, the player must use the type of robot (fixed arbitration, virtual field, state machine, other?) specified by PAW-Bot in order to solve the maze.  In later levels, sometimes the player will be told what robot type to use, and sometimes s/he will get the opportunity to use whatever method(s) s/he wants.
 
-```bash
-python main.py
-```
+6. Novel Behavior: Open ended.  Build a robot by changing its chassis, sensors, actuators and logic to perform new tasks in an environment of your design.
 
-**Python 3.14 + 3.12 side-by-side (Windows):**
-```bash
-py -3.12 main.py
-```
+COMMON FEATURES:
 
-With options:
-```bash
-py -3.12 main.py --sketch sketches/ir_tune.ino
-py -3.12 main.py --sketch sketches/demo_sequence.ino
-py -3.12 main.py --arena arena.json --robot robot.json --sketch sketches/my_sketch.ino
-py -3.12 main.py --debug
-```
-
-Press **Escape** or close the window to quit.
-
----
-
-## Project structure
-
-```
-robosim/
-├── main.py                        # Entry point
-├── arena.json                     # Default arena config
-├── robot.json                     # Default robot config (derived from CAD)
-├── requirements.txt
-├── sketches/
-│   └── ethology_v2.ino            # Example sketch (mirrors your Arduino code)
-└── robosim/
-    ├── config.py                  # ArenaConfig, RobotConfig dataclasses
-    ├── simulation.py              # Top-level sim loop
-    ├── hal/
-    │   ├── arduino_hal.py         # Mocked Arduino API + sketch loader
-    │   └── sketch_bridge.py      # Python equivalents of C++ sensor/robot classes
-    ├── sensors/
-    │   └── sensor_models.py       # IRSensor, LightSensor, ContactSensor
-    ├── robot/
-    │   └── robot_model.py         # RobotModel, DifferentialDrive kinematics
-    ├── arena/
-    │   └── arena_model.py         # ArenaModel: walls, floor, light sources
-    └── renderer/
-        └── pygame_renderer.py     # PyGame top-down view + sensor HUD
-```
-
----
-
-## Sensor HUD
-
-Each sensor displays a semi-transparent indicator at its physical location on the robot:
-
-| Sensor | Indicator | Scales with |
-|--------|-----------|-------------|
-| IR proximity | Green wedge/cone | Object proximity (brighter/longer = closer) |
-| Ambient light (LDR) | Yellow circle | Light intensity (larger = brighter) |
-| Contact (bump) | Red circle | Triggered = bright, clear = dim |
-
-All indicators remain visible at minimum size/opacity even at zero reading.
-
----
-
-## Adding a new sketch
-
-1. Place your `.ino` file in `sketches/`
-2. Run: `python main.py --sketch sketches/your_sketch.ino`
-
-The HAL automatically provides `setup()` and `loop()`, all Arduino API functions,
-and the full `EthologyRobot` / `Robot` / sensor class tree.
-
----
-
-## Customising the arena
-
-Edit `arena.json`:
-```json
-{
-    "width": 2.0,
-    "height": 2.0,
-    "wall_thickness": 0.05,
-    "light_sources": [
-        { "x": 0.5, "y": 0.5, "intensity": 1.0, "radius": 0.35 }
-    ]
-}
-```
-
-All dimensions are in **metres**.
+1. A game environment or arena with exterior walls forming a 1m x 2m enclosed area.  The use of an arena builder to alter said arena by adding such features as walls and lights (sometimes polarized and or colored).  The game environment would take up the right half of the screen (all game windows being made "full screen" according to local hardware).
+2. A control panel taking up the upper half of the left side of the game window.  This would have any buttons or other controls relevant to the current (state of a) game.
+3. An "Exit" button that either exits the current game, or the game suite as a whole depending on the window in which it appears.
+4. A narrative panel on the lower half of the left side of the game window.  This should provide any game narrative, for example from PAW-Bot.  Any and all characters should have dedicated color pallets and text color in the narration panel that matches that character's color pallet.
+5. A robot builder.  This may not apply to every single aspect of every game.  For example, the Robot Ethology robots will be of a fixed architecture.  Likewise, the introductory Braitenberg vehicles will be of a fixed architecture.  However, when it is necessary or permissable to design a robot for a given context, there should be a control button for building a robot similar to how there would be for building an arena.  The builder would have options for chassis, sensors and actuators that match the context of the specific game.  There may be an extensive library of such things, some subset of which may be made available according to context.
+6. A robot programmer.  This may or may not fold into the robot builder.  It would be an interface that would allow the player to, among other things: wire a vehicle; build, re-order, and generate (Python emulated) Arduino code for a fixed hierarchy; specify a set of virtual fields; specify a set of states and state transitions for a state machine driven robot; etc.
