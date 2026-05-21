@@ -178,17 +178,77 @@ class RobotState:
         return wx, wy, wa
 
     def body_corners(self) -> list[tuple[float, float]]:
-        """Return 4 world-frame corners of the robot body (for rendering)."""
-        h      = self.heading
+        """
+        Return world-frame polygon corners of the robot body (for rendering).
+        Reads chassis shape from data/byov/robot.json if present,
+        otherwise falls back to AnaBBot rectangle.
+        """
+        h = self.heading
         cos_h, sin_h = math.cos(h), math.sin(h)
-        corners_local = [
-            ( BODY_FRONT, +BODY_WIDTH/2),
-            ( BODY_FRONT, -BODY_WIDTH/2),
-            ( BODY_REAR,  -BODY_WIDTH/2),
-            ( BODY_REAR,  +BODY_WIDTH/2),
-        ]
+
+        # Try to load chassis from robot.json
+        corners_local = None
+        try:
+            import json as _json, os as _os
+            # 2 levels up from engine/robot_body.py = games/valentinos/
+            _rj = _os.path.join(
+                _os.path.dirname(_os.path.dirname(
+                    _os.path.abspath(__file__))),
+                "data", "byov", "robot.json")
+            if _os.path.exists(_rj):
+                _cfg = _json.load(open(_rj))
+                _chassis = _cfg.get("chassis", "rectangle")
+                _spec    = _cfg.get("chassis_spec", {})
+                if _chassis == "rectangle":
+                    w = _spec.get("width_m",  BODY_WIDTH)  / 2
+                    l = _spec.get("length_m", BODY_LENGTH)
+                    front = AXLE_FROM_FRONT
+                    rear  = -(l - front)
+                    corners_local = [
+                        ( front, +w), ( front, -w),
+                        ( rear,  -w), ( rear,  +w)]
+                elif _chassis == "octagon":
+                    import math as _m
+                    a   = _spec.get("bsquare_m", 0.169) / 2
+                    cut = a * _m.sqrt(2) / (1 + _m.sqrt(2))
+                    # builder: x=lateral, y=forward → swap for body_corners
+                    corners_local = [
+                        (a, a-cut),   (a, -(a-cut)),
+                        (a-cut, -a),  (-a+cut, -a),
+                        (-a, -(a-cut)), (-a, a-cut),
+                        (-a+cut, a),  (a-cut, a)]
+                elif _chassis == "triangle":
+                    import math as _m
+                    R  = _spec.get("circum_r_m", 0.169*_m.sqrt(2)/2)
+                    ir = R / 2
+                    hs = R * _m.sqrt(3) / 2
+                    # builder: front edge at y=+ir, rear vertex y=-R
+                    # swap: front edge at x=+ir, rear vertex x=-R
+                    # front-left=(ir,-hs), front-right=(ir,+hs), rear=(-R,0)
+                    corners_local = [(ir, -hs), (ir, hs), (-R, 0.0)]
+        except Exception:
+            pass
+
+        if corners_local is None:
+            corners_local = [
+                ( BODY_FRONT, +BODY_WIDTH/2),
+                ( BODY_FRONT, -BODY_WIDTH/2),
+                ( BODY_REAR,  -BODY_WIDTH/2),
+                ( BODY_REAR,  +BODY_WIDTH/2),
+            ]
+            # Default: already in (forward, lateral) order
+            return [
+                (self.x + lx*cos_h - ly*sin_h,
+                 self.y + lx*sin_h + ly*cos_h)
+                for lx, ly in corners_local
+            ]
+
+        # chassis_polygon_m returns (x=lateral, y=forward).
+        # Rotation matrix expects (lx=forward, ly=lateral).
+        # Extra 90° CW rotation to align drawing with heading:
+        # apply (lx=px, ly=-py) before the heading rotation.
         return [
-            (self.x + lx*cos_h - ly*sin_h,
-             self.y + lx*sin_h + ly*cos_h)
-            for lx, ly in corners_local
+            (self.x + px*cos_h + py*sin_h,
+             self.y + px*sin_h - py*cos_h)
+            for px, py in corners_local
         ]

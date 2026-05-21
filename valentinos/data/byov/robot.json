@@ -1,0 +1,25 @@
+{
+    "chassis": "octagon",
+    "chassis_spec": {
+        "label": "Octagon  (70 mm edges)",
+        "type": "octagon",
+        "bsquare_m": 0.169
+    },
+    "sensors": {
+        "PL": {
+            "x_m": -0.072,
+            "y_m": 0.008,
+            "angle_deg": 0.0
+        }
+    },
+    "motors": {
+        "MR": {
+            "x_m": 0.0,
+            "y_m": -0.0845
+        },
+        "ML": {
+            "x_m": 0.0,
+            "y_m": 0.0845
+        }
+    }
+}

@@ -1,0 +1,5 @@
+PAW-BOT: Vehicle 2b — Aggression. The wiring looks almost identical to 2a, but with one crucial difference: PL now connects to FR, and PR to FL. Cross-side wiring.
+
+PAW-BOT: When the light is brighter on the left, the right motor speeds up. The robot steers toward the light and accelerates into it. It charges. Braitenberg called this "Aggression."
+
+PAW-BOT: The same physical components, the same sensors and motors — only the wiring has changed. Yet the personality of the machine is completely different.

@@ -1,0 +1,9 @@
+PAW-BOT: You have now seen all five basic vehicles.
+
+PAW-BOT: In this game, I will show you a vehicle running in an arena. Your task is to identify which vehicle — or which combination of vehicles — you are watching.
+
+PAW-BOT: Some will be straightforward. Others will be compounds: two or three behaviours wired together, producing something more complex.
+
+PAW-BOT: Watch carefully. The environment is designed to make the behaviour visible. When the robot stops, make your selection and press Verify.
+
+PAW-BOT: Let's begin.

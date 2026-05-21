@@ -1,0 +1,9 @@
+PAW-BOT: Vehicle 2b still has positive (excitatory) connections between two sensors and two wheels, however each wire goes to the motor on the OPPOSITE side of the body. This is called a contralateral connection.
+
+PAW-BOT: Before you run V2b, take a moment to predict: how will it respond to the light?
+
+PAW-BOT: Press "Continue" and see if your prediction was right.
+
+PAW-BOT: Vehicle 2b is referred to as "Aggressive"; it arcs quickly toward whatever its sensors respond to as though attacking those parts of the environment. It then slowly moves away from the target source.
+
+PAW-BOT: Press "Continue" when you are ready to move on.

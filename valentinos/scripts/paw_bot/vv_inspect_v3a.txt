@@ -1,0 +1,5 @@
+PAW-BOT: Vehicle 3a — Love. Now we introduce neurons. PL inhibits neuron N1 (via the I1 input), and PR inhibits N2. N1 drives FL, N2 drives FR.
+
+PAW-BOT: Each neuron has a resting bias — it runs at a default speed even with no sensor input. The trimpot sets this bias. When a light sensor fires, it subtracts from the neuron's output, slowing that motor down.
+
+PAW-BOT: When light is stronger on the left, the left motor slows. The robot turns toward the light — but also decelerates as it approaches, eventually settling near the source. It is drawn to light, and at rest in its presence. Braitenberg called this "Love."

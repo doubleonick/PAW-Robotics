@@ -1,0 +1,3 @@
+PAW-BOT: With both wires at 3x, the robot reacts much more strongly to any obstacle — it turns sharply and quickly. The weight of the wire shapes how intensely the robot responds.
+
+PAW-BOT: Now let's wire the meters so you can watch the sensor signals live. Open the wiring editor and connect RL to M1, and RR to M3. Leave your existing motor wires in place. Press Done when ready.

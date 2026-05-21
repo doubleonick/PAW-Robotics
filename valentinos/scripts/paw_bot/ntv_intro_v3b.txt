@@ -1,0 +1,7 @@
+PAW-BOT: 3b — Explorer.
+
+PAW-BOT: Like 3a, but cross-connected: PL inhibits N2 (which drives the right motor), and PR inhibits N1 (which drives the left motor).
+
+PAW-BOT: When light is stronger on the left, the right motor slows. The robot turns away — but decelerates as it nears any light source, ending up circling, never quite settling.
+
+PAW-BOT: With nothing more than a bias and crossed inhibition, the robot appears curious about the world. Braitenberg called this Explorer.

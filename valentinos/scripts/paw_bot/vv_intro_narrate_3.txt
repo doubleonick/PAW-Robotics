@@ -1,0 +1,9 @@
+PAW-BOT: The next two vehicles introduce negative (inhibitory) connections. This means that the stronger the response from a sensor, the weaker the response from the connected motor (it will spin more slowly). Vehicle 3a is like two V1s connected side by side, but with negative connections.
+
+PAW-BOT: If Vehicle 2a was a Coward that sped away from what it sensed, what do you think Vehicle 3a will do? What emotion do you think might describe this behavior?
+
+PAW-BOT: Press "Continue" and see if your prediction was right.
+
+PAW-BOT: Vehicle 3a exhibits "Love". It moves toward whatever it senses, and slows as it approaches, spending more time in the proximity of the object of its "affections".
+
+PAW-BOT: Press "Continue" when you are ready to move on.

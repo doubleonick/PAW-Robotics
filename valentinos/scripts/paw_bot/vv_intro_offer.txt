@@ -1,0 +1,5 @@
+PAW-BOT: Welcome to Valentino's Vehicles — named in honor of Valentino Braitenberg, whose 1984 book, "Vehicles: Experiments in Synthetic Psychology" demonstrated how simple sensor-motor wiring produces behavior that looks unexpectedly purposeful.
+
+PAW-BOT: If you are unfamiliar with Braitenberg's Vehicles thought experiments, or you would like to review some of his best known robots, I will gladly EXPLORE them with you.
+
+PAW-BOT: Would you like to review the basics of Vehicles?

@@ -1,0 +1,1 @@
+PAW-BOT: Good. Run the robot again and watch how it navigates your obstacles. When you are ready to continue, press "Continue".

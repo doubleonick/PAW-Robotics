@@ -1,0 +1,3 @@
+PAW-BOT: The left sensor now has more influence than the right. The robot turns more aggressively to the left. The asymmetry makes the behaviour noticeably different.
+
+PAW-BOT: Now try making both wires red. Open the wiring editor, change both connections to red, press Done, and Run again.

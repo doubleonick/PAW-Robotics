@@ -1,0 +1,5 @@
+PAW-BOT: Vehicle 2a — Cowardice. PL (left light sensor) connects to FL (left forward motor), and PR to FR. Same-side wiring again, but now using light sensors instead of range sensors.
+
+PAW-BOT: When the light is brighter on the left, the left motor speeds up. The robot turns away from the light and accelerates — it runs away. The brighter the light, the faster it flees. This is Braitenberg's "Cowardice."
+
+PAW-BOT: Notice there are no neurons in this circuit. A sensor signal travels directly to a motor. Simple, yet the behaviour looks purposeful — even fearful.

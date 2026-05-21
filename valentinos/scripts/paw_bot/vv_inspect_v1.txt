@@ -1,0 +1,5 @@
+PAW-BOT: This is Vehicle 1 — Object Avoidance. Notice the two wires: RL connects directly to FR, and RR connects directly to FL.
+
+PAW-BOT: When the left sensor (RL) detects a nearby object, the right motor (FR) speeds up. When the right sensor (RR) fires, the left motor (FL) speeds up. The result: the robot always steers away from whatever it senses.
+
+PAW-BOT: This is called ipsilateral wiring — each sensor drives the motor on the same side. Watch the meters as an object approaches: the signal flows directly from sensor to motor with no processing in between.

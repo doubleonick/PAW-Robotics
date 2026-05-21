@@ -1,0 +1,3 @@
+PAW-BOT: Now run the robot and watch the LED bars on M1 and M3. As the robot approaches an obstacle on its left, M1 lights up. On the right, M3 reacts. The meters make the invisible signal flow visible.
+
+PAW-BOT: When you are ready, press "Continue" to rewire the robot as Vehicle 2a.

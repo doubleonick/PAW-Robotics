@@ -1,0 +1,1 @@
+PAW-BOT: Not quite. Check your wiring. RL should connect to FR, and RR should connect to FL. The sensors and motors are on opposite sides — this is what makes the robot steer away from obstacles. Try again.

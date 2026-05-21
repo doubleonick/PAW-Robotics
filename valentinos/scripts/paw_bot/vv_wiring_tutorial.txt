@@ -1,0 +1,9 @@
+PAW-BOT: The wiring editor shows your robot's inputs on the left — proximity sensors (RL, RR) and light sensors (PL, PR) — and your motor outputs on the right (FL, FR for forward-left and forward-right).
+
+PAW-BOT: Click any input node, then click an output node to draw a wire. A blue wire carries a signal with weight 1. Green carries weight 2, and red carries weight 3. Higher weight means more influence.
+
+PAW-BOT: Neurons (N1–N6) sit in the middle. They can accumulate signals and be given a resting bias — a default activation even with no input. Wire a sensor into a neuron's excitatory input (E) to increase its output, or into its inhibitory input (I) to reduce it.
+
+PAW-BOT: When you are happy with your wiring, press "Done" and then "Run" to watch your robot move.
+
+PAW-BOT: You can always come back and change the wiring. There is no wrong answer here — only discovery.

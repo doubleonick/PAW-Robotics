@@ -1,0 +1,7 @@
+PAW-BOT: 2b — Aggression.
+
+PAW-BOT: The wiring looks almost identical to 2a, with one crucial difference: each sensor now drives the motor on the opposite side — contralateral wiring.
+
+PAW-BOT: When the light is brighter on the left, the right motor speeds up. The robot steers toward the light and charges into it.
+
+PAW-BOT: Same components as 2a. Same sensors. Same motors. Only the wiring changed — and the robot's character is completely different.

@@ -1,0 +1,1 @@
+PAW-BOT: Well done! You have wired Vehicle 1 — Obstacle Avoidance. Now press Run and watch what it does.

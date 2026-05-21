@@ -1,0 +1,7 @@
+PAW-BOT: Valentino Braitenberg was a neuroscientist who imagined a series of simple vehicles — each one a thought experiment about how behavior emerges from wiring alone.
+
+PAW-BOT: His 1984 book, "Vehicles: Experiments in Synthetic Psychology", is a short and fascinating read. I highly recommend it — even a few pages will change how you look at the robots you build here.
+
+PAW-BOT: I will now show you the five fundamental vehicles. Watch how the robot moves, and notice the wiring diagram in the panel. Each one connects sensors to motors in a slightly different way.
+
+PAW-BOT: Press "Continue" when you are ready to move on, or "Replay" to watch again.

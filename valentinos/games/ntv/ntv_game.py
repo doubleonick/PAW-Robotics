@@ -25,6 +25,7 @@ import random
 import time
 
 import pygame
+from engine.nav import NavOverlay
 
 from valentinos.engine.vehicle     import VehicleEvaluator
 from valentinos.engine.robot_body  import (
@@ -59,8 +60,16 @@ _WHITE_GREEN = (220, 255, 220)
 _RED         = (220,  60,  60)
 _CYAN        = ( 60, 230, 230)
 
-DEMO_SECS   = 5.0
-ROUND_SECS  = 5.0
+def _get_T():
+    """Return current engine.theme module, or None if unavailable."""
+    try:
+        import engine.theme as _t
+        return _t
+    except Exception:
+        return None
+
+DEMO_SECS   = 12.0
+ROUND_SECS  = 12.0
 PHYS_DT     = 1.0 / 120.0
 ROBOT_R     = 0.047
 
@@ -76,7 +85,7 @@ QUESTION_VARIANTS = [
 _SCRIPTS = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__)))),
-    "scripts", "ray")
+    "scripts", "paw_bot")
 
 
 def _load_script(name: str) -> str:
@@ -84,7 +93,7 @@ def _load_script(name: str) -> str:
     if os.path.exists(path):
         with open(path) as f:
             return f.read()
-    return f"RAY: {name}"
+    return f"PAW-BOT: {name}"
 
 
 # ── Simulation helper ─────────────────────────────────────────────────────────
@@ -118,7 +127,11 @@ class _Sim:
         def ldr(mount):
             wx, wy, _ = self._robot.sensor_world_pos(mount)
             illum = light_at(wx, wy, self._arena)
-            illum = max(0.3, illum) if self._arena["light_sources"] else 0.3
+            if self._arena["light_sources"]:
+                # Use actual illuminance — ambient floor would mask the gradient
+                illum = max(0.05, illum)
+            else:
+                illum = 0.3   # no light sources: ambient floor
             return ldr_reading(illum)
 
         from valentinos.engine.vehicle import SensorReadings
@@ -164,6 +177,10 @@ class _Sim:
     @property
     def arena(self): return self._arena
 
+    def signal_snapshot(self) -> dict:
+        """Return the last computed signal values from the evaluator."""
+        return dict(self._ev.signal_snapshot())
+
 
 # ── NTV Game ──────────────────────────────────────────────────────────────────
 
@@ -185,6 +202,7 @@ class NTVGame:
         self._score        = SessionScore()
         self._round_num    = 0
         self._current_round: Round | None = None
+        self._round_question: str = QUESTION_VARIANTS[0]
         self._sim: _Sim | None = None
         self._demo_timer   = 0.0
         self._round_timer  = 0.0
@@ -213,6 +231,7 @@ class NTVGame:
         # State
         self._state = "intro_narrate_0"
         self._done  = False
+        self._nav   = NavOverlay(back_destination="Valentino's Vehicles")
 
         # Check skip-intro
         if self._progress.get("intro_seen"):
@@ -227,9 +246,16 @@ class NTVGame:
 
     @property
     def is_done(self) -> bool:
-        return self._done
+        return self._done or self._nav.confirmed
 
     def handle_event(self, event):
+        # Nav always gets first priority — checks both overlay and Back button
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self._nav.handle_click(event.pos, None, self._btn_rects):
+                return
+        elif event.type == pygame.KEYDOWN:
+            if self._nav.handle_key(event.key):
+                return
         if event.type == pygame.KEYDOWN:
             self._on_key(event)
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -273,6 +299,12 @@ class NTVGame:
         self._draw_canvas(screen, canvas_rect)
         self._draw_controls(screen, ctrl_rect.x, ctrl_rect.width, ctrl_rect)
         self._draw_narrative(screen, narr_rect)
+
+        # Nav confirm overlay — drawn on top of everything
+        if self._nav.is_active:
+            self._nav.draw_overlay(
+                screen, screen.get_width(), screen.get_height(),
+                self._font_hd, self._font_sm, self._btn_rects)
 
     # ── Intro flow ─────────────────────────────────────────────────────────────
 
@@ -334,6 +366,8 @@ class NTVGame:
         self._round_timer = ROUND_SECS
         self._state       = "round_run"
         self._show_dlg    = False
+        # Pick question phrasing once per round — not during draw
+        self._round_question = self._rng.choice(QUESTION_VARIANTS)
 
     def _submit_guess(self):
         if self._selected_choice is None:
@@ -425,18 +459,7 @@ class NTVGame:
         state = self._state
 
         # ── Intro ───────────────────────────────────────────────────────
-        if name == "btn_skip_intro":
-            self._state = "intro_task"
-            self._start_task_narration()
-
-        elif name == "btn_view_demo":
-            idx = self._intro_idx
-            self._start_intro_demo(idx)
-
-        elif name == "btn_intro_next":
-            self._advance_intro()
-
-        elif name == "btn_start_game":
+        if name == "btn_start_game":
             mark_intro_seen()
             self._progress["intro_seen"] = True
             self._start_round()
@@ -467,7 +490,12 @@ class NTVGame:
 
         # ── Back ─────────────────────────────────────────────────────────
         elif name == "btn_back_menu":
+            self._nav.request_back()
+        elif name == "btn_back_ok":
             self._end_session()
+            self._nav.confirm()
+        elif name == "btn_back_cancel":
+            self._nav.cancel()
 
     def _end_session(self):
         record_session(self._score.correct,
@@ -478,15 +506,18 @@ class NTVGame:
     # ── Drawing ────────────────────────────────────────────────────────────────
 
     def _C(self, key: str):
-        """Return colour — use theme if available, else inline constant."""
-        if self._has_theme and self._T:
-            return getattr(self._T, key, _TEXT)
+        """Return colour from current engine.theme (always live)."""
+        t = _get_T()
+        if t:
+            return getattr(t, key, _TEXT)
+        # Phosphor fallback
         mapping = {
             "BG": _BG, "PANEL": _PANEL, "PANEL_DEEP": _PANEL_DEEP,
             "BORDER": _BORDER, "TEXT": _TEXT, "TEXT_DIM": _TEXT_DIM,
             "WHITE_GREEN": _WHITE_GREEN, "PHOSPHOR": _PHOSPHOR,
             "PHOSPHOR_MID": _PHOSPHOR_MID, "AMBER": _AMBER,
-            "TEXT_BRIGHT": _TEXT_BRIGHT,
+            "TEXT_BRIGHT": _TEXT_BRIGHT, "BEH_SEEK": _CYAN,
+            "RED_PH": _RED,
         }
         return mapping.get(key, _TEXT)
 
@@ -497,17 +528,19 @@ class NTVGame:
         mx, my = pygame.mouse.get_pos()
         hov    = rect.collidepoint(mx, my) and not disabled
         if disabled:
-            fill   = _PANEL_DEEP
-            border = tuple(c//2 for c in _BORDER)
-            tc     = _TEXT_DIM
+            fill   = self._C("PANEL_DEEP")
+            border = tuple(c//2 for c in self._C("BORDER"))
+            tc     = self._C("TEXT_DIM")
         elif accent:
-            fill   = color or (_PHOSPHOR_MID if hov else _PANEL_DEEP)
-            border = _PHOSPHOR
-            tc     = _WHITE_GREEN
+            fill   = color or (self._C("PHOSPHOR_MID") if hov
+                               else self._C("PANEL_DEEP"))
+            border = self._C("PHOSPHOR")
+            tc     = self._C("WHITE_GREEN")
         else:
-            fill   = color or (_PANEL if hov else _PANEL_DEEP)
-            border = _BORDER
-            tc     = _TEXT
+            fill   = color or (self._C("PANEL") if hov
+                               else self._C("PANEL_DEEP"))
+            border = self._C("BORDER")
+            tc     = self._C("TEXT")
         pygame.draw.rect(surf, fill,   rect, border_radius=4)
         pygame.draw.rect(surf, border, rect, 1, border_radius=4)
         t = self._font_md.render(label, True, tc)
@@ -515,7 +548,7 @@ class NTVGame:
                       rect.centery - t.get_height()//2))
 
     def _rule(self, surf, y, w, x=0):
-        pygame.draw.line(surf, _BORDER, (x, y), (x + w, y))
+        pygame.draw.line(surf, self._C("BORDER"), (x, y), (x + w, y))
 
     def _text_wrap(self, surf, text, x, y, w, font=None, col=None) -> int:
         font = font or self._font_sm
@@ -565,7 +598,7 @@ class NTVGame:
                        traces={"robot": self._sim.trace})
 
         else:
-            pygame.draw.rect(screen, _BG, cr)
+            pygame.draw.rect(screen, self._C("BG"), cr)
 
         # Timer overlay during runs
         if state.startswith("intro_demo_"):
@@ -577,9 +610,9 @@ class NTVGame:
         frac  = max(0.0, remaining / total)
         bar_w = int(cr.width * frac)
         bar_r = pygame.Rect(cr.x, cr.bottom - 6, bar_w, 6)
-        pygame.draw.rect(screen, _PHOSPHOR_MID, bar_r)
+        pygame.draw.rect(screen, self._C("PHOSPHOR_MID"), bar_r)
 
-        t = self._font_sm.render(f"{remaining:.1f}s", True, _TEXT_DIM)
+        t = self._font_sm.render(f"{remaining:.1f}s", True, self._C("TEXT_DIM"))
         screen.blit(t, (cr.right - t.get_width() - 8, cr.bottom - 20))
 
     # ── Control panel ──────────────────────────────────────────────────────────
@@ -602,19 +635,19 @@ class NTVGame:
         y = ctrl_rect.y + 8
 
         # Title
-        tt = self._font_hd.render("NAME THAT VEHICLE", True, _WHITE_GREEN)
+        tt = self._font_hd.render("NAME THAT VEHICLE", True, self._C("WHITE_GREEN"))
         screen.blit(tt, (x, y)); y += 26
         self._rule(screen, y, w, x); y += 12
 
         # Which vehicle or task
         state = self._state
         if state == "intro_task":
-            sub = self._font_sm.render("Game introduction", True, _TEXT_DIM)
+            sub = self._font_sm.render("Game introduction", True, self._C("TEXT_DIM"))
         else:
             idx  = self._intro_idx
             vdef = INTRO_ORDER[idx]
             sub  = self._font_sm.render(
-                f"Introducing: {vdef.label}", True, _TEXT_DIM)
+                f"Introducing: {vdef.label}", True, self._C("TEXT_DIM"))
         screen.blit(sub, (x, y)); y += 22
 
         # Tally display
@@ -643,67 +676,60 @@ class NTVGame:
             self._btn(screen, x, btn_y, w, 28,
                       "Skip Intro", "btn_skip_intro")
 
-        self._btn(screen, x, ctrl_rect.bottom - 28, w, 24,
-                  "← Menu", "btn_back_menu")
 
     def _draw_ctrl_intro_demo(self, screen, x, w, ctrl_rect):
         y   = ctrl_rect.y + 8
         idx = self._intro_idx
-        tt  = self._font_hd.render("WATCH", True, _WHITE_GREEN)
+        tt  = self._font_hd.render("WATCH", True, self._C("WHITE_GREEN"))
         screen.blit(tt, (x, y)); y += 26
         self._rule(screen, y, w, x); y += 12
 
         vdef = INTRO_ORDER[idx]
-        sub  = self._font_sm.render(vdef.full_name, True, _AMBER)
+        sub  = self._font_sm.render(vdef.full_name, True, self._C("AMBER"))
         screen.blit(sub, (x, y)); y += 20
 
-        note = self._font_sm.render("Observing...", True, _TEXT_DIM)
+        note = self._font_sm.render("Observing...", True, self._C("TEXT_DIM"))
         screen.blit(note, (x, y))
 
-        self._btn(screen, x, ctrl_rect.bottom - 28, w, 24,
-                  "← Menu", "btn_back_menu")
 
     def _draw_ctrl_round_run(self, screen, x, w, ctrl_rect):
         y = ctrl_rect.y + 8
-        tt = self._font_hd.render("OBSERVE", True, _WHITE_GREEN)
+        tt = self._font_hd.render("OBSERVE", True, self._C("WHITE_GREEN"))
         screen.blit(tt, (x, y)); y += 26
         self._rule(screen, y, w, x); y += 12
 
-        rn  = self._font_sm.render(f"Round {self._round_num}", True, _TEXT_DIM)
+        rn  = self._font_sm.render(f"Round {self._round_num}", True, self._C("TEXT_DIM"))
         screen.blit(rn, (x, y)); y += 22
 
-        note = self._font_sm.render("Watch carefully.", True, _TEXT)
+        note = self._font_sm.render("Watch carefully.", True, self._C("TEXT"))
         screen.blit(note, (x, y))
 
         self._draw_tally(screen, x, w, ctrl_rect.bottom - 80)
-        self._btn(screen, x, ctrl_rect.bottom - 28, w, 24,
-                  "← Menu", "btn_back_menu")
 
     def _draw_ctrl_round_guess(self, screen, x, w, ctrl_rect):
         y = ctrl_rect.y + 8
 
-        question = self._rng.choice(QUESTION_VARIANTS)
-        qt = self._font_md.render(question, True, _WHITE_GREEN)
+        qt = self._font_md.render(self._round_question, True, self._C("WHITE_GREEN"))
         screen.blit(qt, (x, y)); y += 24
         self._rule(screen, y, w, x); y += 10
 
         if self._current_round:
             for i, choice in enumerate(self._current_round.choices):
                 selected = (choice is self._selected_choice)
-                col      = _PHOSPHOR if selected else _BORDER
-                bg       = _PANEL    if selected else _PANEL_DEEP
+                col      = self._C("PHOSPHOR") if selected else _BORDER
+                bg       = self._C("PANEL")    if selected else _PANEL_DEEP
                 r        = pygame.Rect(x, y, w, 30)
                 pygame.draw.rect(screen, bg,  r, border_radius=3)
                 pygame.draw.rect(screen, col, r, 1, border_radius=3)
                 # Checkbox
                 cb = pygame.Rect(x + 6, y + 7, 16, 16)
-                pygame.draw.rect(screen, _PANEL_DEEP, cb, border_radius=3)
+                pygame.draw.rect(screen, self._C("PANEL_DEEP"), cb, border_radius=3)
                 pygame.draw.rect(screen, col, cb, 1, border_radius=3)
                 if selected:
-                    pygame.draw.line(screen, _PHOSPHOR,
+                    pygame.draw.line(screen, self._C("PHOSPHOR"),
                                      (cb.x+3, cb.centery),
                                      (cb.centerx, cb.bottom-3), 2)
-                    pygame.draw.line(screen, _PHOSPHOR,
+                    pygame.draw.line(screen, self._C("PHOSPHOR"),
                                      (cb.centerx, cb.bottom-3),
                                      (cb.right-3, cb.y+3), 2)
                 lbl = self._font_sm.render(choice.label, True,
@@ -718,8 +744,6 @@ class NTVGame:
                   accent=can_verify, disabled=not can_verify)
 
         self._draw_tally(screen, x, w, ctrl_rect.bottom - 52)
-        self._btn(screen, x, ctrl_rect.bottom - 28, w, 24,
-                  "← Menu", "btn_back_menu")
 
     def _draw_ctrl_round_result(self, screen, x, w, ctrl_rect):
         y = ctrl_rect.y + 8
@@ -759,8 +783,6 @@ class NTVGame:
                       "Try Again  ↺", "btn_try_again", accent=True)
 
         self._draw_tally(screen, x, w, ctrl_rect.bottom - 52)
-        self._btn(screen, x, ctrl_rect.bottom - 28, w, 24,
-                  "← Menu", "btn_back_menu")
 
     def _draw_tally(self, screen, x, w, y) -> int:
         """Draw score tally. Returns y after drawing."""
@@ -770,8 +792,8 @@ class NTVGame:
         lt_i  = prog.get("lifetime_incorrect",  0.0)
 
         # Session tally
-        cc = _PHOSPHOR if self._correct_flash   > 0 else _TEXT_DIM
-        ic = _RED      if self._incorrect_flash > 0 else _TEXT_DIM
+        cc = self._C("PHOSPHOR") if self._correct_flash   > 0 else _TEXT_DIM
+        ic = self._C("RED_PH")   if self._incorrect_flash > 0 else _TEXT_DIM
 
         sc = self._font_sm.render(
             f"Session  ✓ {self._score.correct:.1f}  "
@@ -789,7 +811,7 @@ class NTVGame:
     # ── Narrative region ────────────────────────────────────────────────────────
 
     def _draw_narrative(self, screen, narr_rect: pygame.Rect):
-        pygame.draw.rect(screen, _PANEL_DEEP, narr_rect)
+        pygame.draw.rect(screen, self._C("PANEL_DEEP"), narr_rect)
         if self._show_dlg and self._dlg and not self._dlg.is_done:
             # Update dialogue box dimensions to match current narr_rect
             self._dlg._w = narr_rect.width
@@ -801,6 +823,6 @@ class NTVGame:
                 True, _TEXT_DIM)
             if self._show_dlg:
                 # Dialogue done — show replay hint
-                hint2 = self._font_sm.render("", True, _TEXT_DIM)
+                hint2 = self._font_sm.render("", True, self._C("TEXT_DIM"))
                 screen.blit(hint2, (narr_rect.x + 6,
                                     narr_rect.y + 6))

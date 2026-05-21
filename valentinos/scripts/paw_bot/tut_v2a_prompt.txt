@@ -1,0 +1,3 @@
+PAW-BOT: Now we will build Vehicle 2a — Cowardice. Open the wiring editor and delete all the wires going to the motors. Then connect PL to FL, and PR to FR. Leave the meter connections if you like — they will still work.
+
+PAW-BOT: PL and PR are the light sensors. Same-side wiring again, but this time from light sensors to motors. Press Done when ready.

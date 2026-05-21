@@ -1,0 +1,7 @@
+PAW-BOT: Welcome to the Wiring Tutorial. By the end of this, you will have built two vehicles from scratch, and you will know how to wire, rewire, and use the meters.
+
+PAW-BOT: We will start with Vehicle 1 — Obstacle Avoidance. It uses two infrared range sensors (RL and RR) wired directly to two motors (FL and FR).
+
+PAW-BOT: Press "Open Wiring Editor" to begin. Inside the editor, click RL — the left range sensor — then click FR — the right forward motor. That draws your first wire.
+
+PAW-BOT: Then connect RR to FL. When both wires are in place, press Done.

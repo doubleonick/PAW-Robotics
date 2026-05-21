@@ -27,26 +27,36 @@ from typing import Optional
 
 import pygame
 
-# ── Colours (shared with wiring editor palette) ────────────────────────────────
-
-BG           = (10,  12,  10)
-FLOOR        = (10,  18,  10)
-WALL_COL     = (40,  90,  40)
-LIGHT_COL    = (255, 200,  50)
-BORDER       = (30,  58,  30)
-PHOSPHOR     = ( 51, 255,  87)
-TEXT_DIM     = ( 70, 110,  70)
-AMBER        = (255, 149,   0)
-WHITE_GREEN  = (220, 255, 220)
+# ── Colours — always read from engine.theme ────────────────────────────────────
 
 MARGIN = 28
+
+def _colours():
+    """Return current theme colours. Called at draw time so theme changes apply."""
+    try:
+        import engine.theme as _t
+        return _t
+    except Exception:
+        pass
+    # Phosphor fallback
+    class _F:
+        BG          = (10,  12,  10)
+        FLOOR       = (10,  18,  10)
+        WALL_COLOR  = (40,  90,  40)
+        LIGHT_COLOR = (255, 200,  50)
+        BORDER      = (30,  58,  30)
+        PHOSPHOR    = ( 51, 255,  87)
+        TEXT_DIM    = ( 70, 110,  70)
+        AMBER       = (255, 149,   0)
+        WHITE_GREEN = (220, 255, 220)
+    return _F()
 
 
 # ── Default arena ─────────────────────────────────────────────────────────────
 
 DEFAULT_ARENA: dict = {
-    "width":          1.5,
-    "height":         1.5,
+    "width":          1.0,
+    "height":         2.0,
     "wall_thickness": 0.05,
     "light_sources":  [],
     "internal_walls": [],
@@ -132,6 +142,15 @@ def draw_arena(surf: pygame.Surface,
     def w2s(wx, wy):
         return world_to_screen(wx, wy, canvas_rect, arena)
 
+    # Resolve current theme colours
+    C   = _colours()
+    BG          = C.BG
+    FLOOR       = C.FLOOR
+    WALL_COL    = C.WALL_COLOR
+    LIGHT_COL   = C.LIGHT_COLOR
+    PHOSPHOR    = C.PHOSPHOR
+    WHITE_GREEN = C.WHITE_GREEN
+
     # Canvas background
     pygame.draw.rect(surf, BG, canvas_rect)
 
@@ -141,16 +160,20 @@ def draw_arena(surf: pygame.Surface,
     pygame.draw.rect(surf, FLOOR,
                      pygame.Rect(tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]))
 
-    # Light sources — amber glow
+    # Light color palette
+    _LIGHT_COLS = {"white": (255, 220, 120), "red": (255, 60, 60),
+                   "green": (60, 220, 60),   "blue": (80, 140, 255)}
+    # Light sources — colored glow
     for ls in arena["light_sources"]:
         cx_s, cy_s = w2s(ls["x"], ls["y"])
-        r_px = max(4, int(ls["radius"] * scl))
+        r_px  = max(4, int(ls["radius"] * scl))
+        lcol  = _LIGHT_COLS.get(ls.get("color", "white"), (255, 220, 120))
         for ring in range(r_px, 0, -max(1, r_px // 8)):
             alpha = int(70 * (1.0 - ring / r_px))
             s = pygame.Surface((ring * 2, ring * 2), pygame.SRCALPHA)
-            pygame.draw.circle(s, (255, 180, 0, alpha), (ring, ring), ring)
+            pygame.draw.circle(s, (*lcol, alpha), (ring, ring), ring)
             surf.blit(s, (cx_s - ring, cy_s - ring))
-        pygame.draw.circle(surf, LIGHT_COL, (cx_s, cy_s), max(3, r_px // 6))
+        pygame.draw.circle(surf, lcol, (cx_s, cy_s), max(3, r_px // 6))
 
     # Internal walls
     for iw in arena["internal_walls"]:
@@ -262,13 +285,20 @@ def ray_distance(ox: float, oy: float, angle: float,
     return best
 
 
-def light_at(wx: float, wy: float, arena: dict) -> float:
+def light_at(wx: float, wy: float, arena: dict,
+             channel: str = "white") -> float:
     """
-    Return combined normalized light intensity at world position (wx, wy).
-    Sums contributions from all light sources, clamped to [0, 1].
+    Return normalized light intensity at (wx, wy) for the given channel.
+    channel: "white" sums all sources regardless of color.
+             "red"/"green"/"blue" sums only matching sources.
+    Intensity falls off linearly: 1.0 at centre, 0.0 at radius*2.
     """
     total = 0.0
     for ls in arena["light_sources"]:
+        ls_color = ls.get("color", "white")
+        # White channel reads all sources; colored channel reads matching
+        if channel != "white" and ls_color != channel:
+            continue
         dist = math.hypot(wx - ls["x"], wy - ls["y"])
         r    = max(0.01, ls["radius"])
         if dist < r * 3:

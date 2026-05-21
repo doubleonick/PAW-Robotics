@@ -1,0 +1,3 @@
+PAW-BOT: Now that you have seen all five fundamental vehicles, you are ready to build your own.
+
+PAW-BOT: Would you like a brief tutorial on how to wire a robot? I can walk you through the wiring editor and show you how to connect sensors, neurons, and motors.

@@ -1,0 +1,11 @@
+{
+    "connections": [
+        {
+            "source": "PL",
+            "dest": "FR",
+            "color": "blue"
+        }
+    ],
+    "gain": 1.0,
+    "neuron_biases": {}
+}

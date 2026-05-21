@@ -19,7 +19,9 @@ class VehicleDef:
 
     @property
     def full_name(self) -> str:
-        return ", or ".join([self.label] + list(self.names))
+        """e.g. '2b — Aggression' or '3a — Love'"""
+        short = self.label.replace("Vehicle ", "").strip()
+        return f"{short} — {self.names[0]}"
 
     @property
     def short_name(self) -> str:
@@ -34,11 +36,13 @@ class VehicleDef:
 
 V1 = VehicleDef(
     key="v1", label="Vehicle 1",
-    names=("Obstacle Avoidance",),
-    motive="obstacle",
+    names=("Light Response",),
+    motive="light",
     config=VehicleConfig(
-        connections=[Connection("RL","FL","blue"), Connection("RR","FR","blue")],
-        name="Vehicle 1 — Obstacle Avoidance",
+        # One LDR (PL) drives both motors equally — the robot speeds up
+        # or slows as a unit in response to light intensity, with no steering.
+        connections=[Connection("PL","FL","blue"), Connection("PL","FR","blue")],
+        name="Vehicle 1 — Light Response",
     ),
 )
 
@@ -69,7 +73,7 @@ V3A = VehicleDef(
     config=VehicleConfig(
         connections=[
             Connection("N1","FL","blue"), Connection("N2","FR","blue"),
-            Connection("PL","I1","blue"), Connection("PR","I2","blue"),
+            Connection("PL","I1","green"), Connection("PR","I2","green"),
         ],
         neuron_biases={"N1": 1.0, "N2": 1.0},
         name="Vehicle 3a — Love",
@@ -83,7 +87,7 @@ V3B = VehicleDef(
     config=VehicleConfig(
         connections=[
             Connection("N1","FL","blue"), Connection("N2","FR","blue"),
-            Connection("PL","I2","blue"), Connection("PR","I1","blue"),
+            Connection("PL","I2","green"), Connection("PR","I1","green"),
         ],
         neuron_biases={"N1": 1.0, "N2": 1.0},
         name="Vehicle 3b — Explorer",

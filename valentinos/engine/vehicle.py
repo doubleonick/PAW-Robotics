@@ -45,10 +45,10 @@ VALID_DESTS   = EXCITATORY_NODES | INHIBITORY_NODES | MOTOR_NODES | METER_NODES
 @dataclass
 class SensorReadings:
     """Normalized [0, 1] sensor values for one tick."""
-    RL: float = 0.0   # left IR proximity
-    RR: float = 0.0   # right IR proximity
-    PL: float = 0.3   # left LDR  (0.3 = ambient floor)
-    PR: float = 0.3   # right LDR
+    RL: float = 0.0
+    RR: float = 0.0
+    PL: float = 0.3
+    PR: float = 0.3
 
 
 # ── Motor output ──────────────────────────────────────────────────────────────
@@ -178,7 +178,12 @@ class VehicleEvaluator:
             if not changed:
                 break   # converged
 
-        # 4. Evaluate motor inputs
+        # 4. Evaluate meter inputs (for display)
+        for _m in ("M1", "M2", "M3", "M4"):
+            sig[_m] = max(0.0, min(1.0,
+                          self._sum_inputs(dest_map, _m, sig)))
+
+        # 5. Evaluate motor inputs
         fl = self._sum_inputs(dest_map, "FL", sig)
         bl = self._sum_inputs(dest_map, "BL", sig)
         fr = self._sum_inputs(dest_map, "FR", sig)

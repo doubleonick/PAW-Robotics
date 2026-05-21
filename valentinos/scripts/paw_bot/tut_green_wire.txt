@@ -1,0 +1,3 @@
+PAW-BOT: Now open the wiring editor again. Delete the wire from RL to FR, and replace it with a green wire — the same connection, but green carries twice the weight.
+
+PAW-BOT: Blue wire is 1x. Green is 2x. Red is 3x. When you are done, press Done and Run.

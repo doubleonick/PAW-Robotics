@@ -1,0 +1,5 @@
+PAW-BOT: Vehicle 3b — Explorer. The wiring is like 3a, but cross-connected: PL inhibits N2 (which drives FR), and PR inhibits N1 (which drives FL).
+
+PAW-BOT: When light is stronger on the left, the right motor slows. The robot turns away from the light — but since it also decelerates as it nears any source, it ends up circling, exploring the space around the light without ever quite settling.
+
+PAW-BOT: With neurons, a resting bias, and crossed inhibition — nothing more — Braitenberg created a robot that appears to be curious about the world.

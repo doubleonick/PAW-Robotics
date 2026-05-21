@@ -1,0 +1,7 @@
+PAW-BOT: 2a — Cowardice.
+
+PAW-BOT: The light sensors (PL and PR) are wired directly to the motors on the same side. When the light is brighter on the left, the left motor speeds up.
+
+PAW-BOT: The robot turns away from the light and accelerates. The brighter the light, the faster it flees. Braitenberg named this Cowardice.
+
+PAW-BOT: No neurons, no processing — just a direct connection from sensation to motion.

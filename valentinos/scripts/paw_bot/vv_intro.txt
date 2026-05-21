@@ -1,0 +1,7 @@
+PAW-BOT: Welcome to Valentino's Vehicles — named in honor of Valentino Braitenberg, whose 1984 book showed how simple wiring between sensors and motors can produce behavior that looks surprisingly purposeful.
+
+PAW-BOT: Each robot you will build here is an analog computer. Sensors read light and proximity. Wires carry those signals — with weights of one, two, or three — to motor inputs.
+
+PAW-BOT: The motors respond to whatever signals arrive. A small difference in wiring produces a completely different personality.
+
+PAW-BOT: You will observe, you will hypothesize, and you will build. Let's begin.

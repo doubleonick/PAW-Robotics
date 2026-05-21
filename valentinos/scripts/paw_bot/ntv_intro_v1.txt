@@ -1,0 +1,7 @@
+PAW-BOT: 1 — Obstacle Avoidance.
+
+PAW-BOT: The IR sensors at the front detect nearby objects. Each sensor is wired directly to the motor on the same side — ipsilateral wiring.
+
+PAW-BOT: When the left sensor detects something close, the left motor speeds up. The robot steers away. A simple reflex, but reliable.
+
+PAW-BOT: Watch the wiring diagram as the robot moves. The signal flows from sensor to motor with nothing in between.

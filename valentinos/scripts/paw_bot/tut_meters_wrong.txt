@@ -1,0 +1,1 @@
+PAW-BOT: Almost. Connect RL to M1, and RR to M3. The existing motor wires should still be there too. The meters let you observe signal strength without affecting the robot's behaviour.

@@ -1,0 +1,7 @@
+PAW-BOT: In Build Your Own Vehicle, you are the engineer.
+
+PAW-BOT: Use the wiring editor to connect sensors to motors — or route signals through neurons to shape them first.
+
+PAW-BOT: Then watch what happens. There is no correct answer here — only discovery.
+
+PAW-BOT: When you are ready, press Run. You can edit the wiring or the arena at any time and run again.
