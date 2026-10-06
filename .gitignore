@@ -1,0 +1,30 @@
+# Build artifacts (generated; never edit, never commit)
+dist/
+build/
+_output/
+*.spec.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# PyInstaller
+*.manifest
+
+# Packaged handoffs — these are transport, not source
+*.zip
+
+# Debug probes (regenerated on every run)
+physics_probe.txt
+render_probe.txt
+
+# OS
+.DS_Store
+Thumbs.db
+*.HEIC

@@ -1,0 +1,18 @@
+{
+    "_description": "C07 Light and Wall — LDR·G Seek (toward light) + IR Flow-around (flee + circulate) on the wall. The robot curves AROUND the wall instead of stalling in the corner. tangential=2.0 rounds the wall cleanly at this forward IR mount (a more central mount needs less swirl ~1.5); see field_physics.compute_force.",
+    "chassis": "octagon",
+    "chassis_spec": {"type": "octagon", "bsquare_m": 0.169},
+    "sensors": {
+        "LDR·G": {"type": "LDR", "channel": "G",
+                  "x_m": 0.07, "y_m": 0.0,
+                  "angle_deg": 0.0, "policy": "attract"},
+        "IR·R": {"type": "IR", "channel": "W",
+                 "x_m": 0.07, "y_m": -0.03,
+                 "angle_deg": -45.0, "policy": "repel",
+                 "tangential": 2.0}
+    },
+    "motors": {
+        "ML": {"x_m": 0.0, "y_m":  0.060},
+        "MR": {"x_m": 0.0, "y_m": -0.060}
+    }
+}

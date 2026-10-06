@@ -1,0 +1,17 @@
+{
+    "_description": "C06 Green vs Red — G attractor left-of-center, R repulsor right-of-center",
+    "chassis": "octagon",
+    "chassis_spec": {"type": "octagon", "bsquare_m": 0.169},
+    "sensors": {
+        "LDR·L": {"type": "LDR", "channel": "G",
+                  "x_m": 0.07, "y_m": 0.03,
+                  "angle_deg": 15.0, "policy": "attract"},
+        "LDR·R": {"type": "LDR", "channel": "R",
+                  "x_m": 0.07, "y_m": -0.03,
+                  "angle_deg": -15.0, "policy": "repel"}
+    },
+    "motors": {
+        "ML": {"x_m": 0.0, "y_m":  0.060},
+        "MR": {"x_m": 0.0, "y_m": -0.060}
+    }
+}

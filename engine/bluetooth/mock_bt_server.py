@@ -49,7 +49,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 
 # ── Inlined from engine/wifi/mock_robot_server.py ──────────────────────────
-PROX_THRESHOLD  = 15    # cm — proximityThreshold() fires when getData() <= 15
+PROX_THRESHOLD  = 20    # cm — matches EthologyRobot.h / engine.hal.ethology_robot.
+                        # Was 15, a third value: sim 33, firmware 35, mock 15.
 LIGHT_THRESHOLD = 10    # getData() units — lightGradientThreshold() fires when
 class SensorState:
     """
@@ -159,10 +160,10 @@ def cond_always(s: SensorState)         -> bool: return True
 # Registry — identical ordering and names to the Arduino sketch
 REGISTRY = [
     {"name": "escape_front",    "condition": cond_front_contact,  "timed": True},
-    {"name": "escape_rear",     "condition": cond_rear_contact,   "timed": True},
+    {"name": "escape_back",     "condition": cond_rear_contact,   "timed": True},
     {"name": "avoid_object",    "condition": cond_proximity,      "timed": False},
     {"name": "approach_object", "condition": cond_proximity,      "timed": False},
-    {"name": "seek_light",      "condition": cond_light_gradient, "timed": False},
+    {"name": "approach_light",      "condition": cond_light_gradient, "timed": False},
     {"name": "avoid_light",     "condition": cond_light_gradient, "timed": False},
     {"name": "cruise_straight", "condition": cond_always,         "timed": False},
     {"name": "cruise_arc",      "condition": cond_always,         "timed": False},
@@ -253,10 +254,10 @@ def cond_always(s: SensorState)         -> bool: return True
 # Registry — identical ordering and names to the Arduino sketch
 REGISTRY = [
     {"name": "escape_front",    "condition": cond_front_contact,  "timed": True},
-    {"name": "escape_rear",     "condition": cond_rear_contact,   "timed": True},
+    {"name": "escape_back",     "condition": cond_rear_contact,   "timed": True},
     {"name": "avoid_object",    "condition": cond_proximity,      "timed": False},
     {"name": "approach_object", "condition": cond_proximity,      "timed": False},
-    {"name": "seek_light",      "condition": cond_light_gradient, "timed": False},
+    {"name": "approach_light",      "condition": cond_light_gradient, "timed": False},
     {"name": "avoid_light",     "condition": cond_light_gradient, "timed": False},
     {"name": "cruise_straight", "condition": cond_always,         "timed": False},
     {"name": "cruise_arc",      "condition": cond_always,         "timed": False},

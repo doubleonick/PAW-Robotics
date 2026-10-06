@@ -1,0 +1,1 @@
+PAW-BOT: Not quite. For Vehicle 2a, connect LDR·C1 to FL with a blue wire, and LDR·C2 to FR with a blue wire. Left sensor to left motor, right sensor to right motor. Try again.

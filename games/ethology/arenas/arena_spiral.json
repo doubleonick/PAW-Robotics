@@ -1,0 +1,29 @@
+{
+  "_description": "Spiral maze arena for Robot Ethology. Robots start at the centre; a light sits in the top-right corner. The target behaviour is observed as it winds out of the spiral corridor toward the light. Uniform corridor (~0.24 m) sized for the RE robot (0.155 m). Do not edit \u2014 use Save As to create your own.",
+  "width": 1.5,
+  "height": 2.5,
+  "wall_thickness": 0.05,
+  "light_sources": [
+    {
+      "x": 0.55,
+      "y": 1.05,
+      "intensity": 1.4,
+      "radius": 0.40,
+      "color": "white"
+    }
+  ],
+  "internal_walls": [
+    { "x0": -0.13, "y0": -0.13, "x1":  0.13, "y1": -0.13, "thickness": 0.05 },
+    { "x0":  0.13, "y0":  0.13, "x1": -0.13, "y1":  0.13, "thickness": 0.05 },
+    { "x0": -0.13, "y0":  0.13, "x1": -0.13, "y1": -0.13, "thickness": 0.05 },
+    { "x0": -0.37, "y0": -0.37, "x1":  0.37, "y1": -0.37, "thickness": 0.05 },
+    { "x0":  0.37, "y0": -0.37, "x1":  0.37, "y1":  0.37, "thickness": 0.05 },
+    { "x0": -0.37, "y0":  0.37, "x1": -0.37, "y1": -0.37, "thickness": 0.05 },
+    { "x0":  0.13, "y0": -0.13, "x1":  0.37, "y1": -0.13, "thickness": 0.05 }
+  ],
+  "robot_start": {
+    "x": 0.0,
+    "y": 0.0,
+    "heading_deg": 90.0
+  }
+}

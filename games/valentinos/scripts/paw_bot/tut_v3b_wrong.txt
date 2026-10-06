@@ -1,0 +1,1 @@
+PAW-BOT: Not quite. For Vehicle 3b: connect LDR·C1 to I2 (blue), LDR·C2 to I1 (blue), N1 to FL (blue), and N2 to FR (blue). The sensors inhibit the opposite neuron, and the neurons drive the motors on their own side. Try again.

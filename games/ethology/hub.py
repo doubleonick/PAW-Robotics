@@ -25,7 +25,22 @@ import json
 ROOT      = os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))))
 GAME_DIR  = os.path.dirname(os.path.abspath(__file__))
-TOOLS_DIR = os.path.join(ROOT, "tools")
+TOOLS_DIR    = os.path.join(ROOT, "tools")
+ARENAS_DIR   = os.path.join(GAME_DIR, "arenas")
+_DEFAULT_ARENA = os.path.join(ARENAS_DIR, "arena_default.json")
+_SESSION_ARENA = os.path.join(ARENAS_DIR, "session_current.json")
+
+
+def _clear_session_arena():
+    """Remove the per-round working-arena scratch file, if present. Called at
+    launch and on Play Again so a player's arena edits never persist across
+    sessions or bleed into a new round. The bundle and default arenas (the
+    authored content) are never touched."""
+    try:
+        if os.path.exists(_SESSION_ARENA):
+            os.remove(_SESSION_ARENA)
+    except OSError:
+        pass
 sys.path.insert(0, ROOT)
 sys.path.insert(0, GAME_DIR)
 
@@ -33,17 +48,18 @@ import pygame
 import pybullet as p
 import pybullet_data
 
-from robosim.config import ArenaConfig, RobotConfig
-from robosim.layout import Layout
-import robosim.theme as T
-from robosim.theme import (
+from engine.config import ArenaConfig, RobotConfig
+from engine.layout import Layout
+import engine.theme as T
+from engine.theme import (
     draw_double_rule, draw_scanlines, draw_led_string,
     draw_panel, draw_btn,
 )
-from robosim.arena.arena_model import ArenaModel
-from robosim.robot.robot_model import RobotModel
-from robosim.hal.arduino_hal import ArduinoHAL
-from robosim.recorder import Recorder
+from engine.arena.arena_model import ArenaModel
+from engine.robot.robot_model import RobotModel
+from engine.hal.arduino_hal import ArduinoHAL
+from engine.recorder import Recorder
+from engine.nav import NavOverlay
 
 def _C():
     """Return current theme colours as a namespace — called each draw."""
@@ -107,14 +123,24 @@ class RobotRunner:
             bot = self.hal._namespace.get("bot")
             if not (bot and hasattr(bot, "notify_contact")):
                 return
+            any_contact = False
             for wall_id in arena_body_ids[1:]:
                 contacts = p.getContactPoints(
                     bodyA=self.model.body_id,
                     bodyB=wall_id,
                     physicsClientId=physics_client)
                 if contacts:
+                    any_contact = True
+                    break
+            if any_contact:
+                # Only notify if not in post-escape cooldown
+                now = time.monotonic()
+                cooldown_until = getattr(bot, "_contact_cooldown_until", 0.0)
+                if now >= cooldown_until:
                     bot.notify_contact()
-                    return
+            else:
+                if hasattr(bot, "clear_contact"):
+                    bot.clear_contact()
         except Exception:
             pass
 
@@ -141,11 +167,18 @@ class Hub:
         self._gs      = game_state
         self._state   = "welcome"
         self._exit_requested = False
+        self._nav = NavOverlay(back_destination="the game menu")
         self._status  = ""
         self._status_col = T.TEXT_DIM
         self._btn_rects  = {}
         self._last_result = ""
         self._show_dlg_in_experiment = False
+        # Robot Inspector overlay (read-only specimen view). When set to "A"/"B",
+        # the inspector modal is shown for that robot over the experiment screen.
+        self._inspect_robot: str | None = None
+        self._inspector = None
+        self._inspect_close_btn = None
+        self._inspect_panel = None
 
         # Physics
         self._client   = -1
@@ -170,11 +203,10 @@ class Hub:
         self._phys_hierarchy: list  = []
         self._phys_min_secs:  float = 60.0   # 1 minute minimum
 
-        # WiFi physical experiment — set when builder used WiFi path
-        self._phys_wifi:      bool  = False   # True = robot running via WiFi
-        self._phys_session:   str   = ""      # session token from RobotWiFiClient
-        self._phys_host:      str   = ""      # robot IP
-        self._phys_port:      int   = 80      # robot port
+        # BLE physical experiment state
+        self._phys_ble:       bool  = False   # True = robot running via BLE
+        self._phys_session:   str   = ""      # session token
+        self._phys_device:    str   = "RobotA"
 
         # Playback state
         self._pb_frames:  dict[str, list] = {}   # label → list of Frame
@@ -194,36 +226,89 @@ class Hub:
         WW, WH, PANEL_W = ww, wh, self._layout.panel_w
 
         self._screen = pygame.display.set_mode((WW, WH))
-        pygame.display.set_caption("Curious Robotics")
+        pygame.display.set_caption("Robot Ethology")
         self._clock  = pygame.time.Clock()
-        from robosim.theme import font_hd, font_md, font_sm, font_lg
+        from engine.theme import font_hd, font_md, font_sm, font_lg
         self._font_hd  = font_hd()
         self._font_md  = font_md()
         self._font_sm  = font_sm()
         self._font_lg  = font_lg()
 
         # Professor Ray
-        from robosim.professor import DialogueBox
+        from engine.professor import DialogueBox
         self._ray_h   = int(self._layout.wh * 0.45)
         self._ray_w   = self._ray_h * 2 // 3
         # Dialogue box: bottom of panel, right of Ray portrait
-        from robosim.professor import load_script
-        self._dlg = DialogueBox(200, 140, T.CURRENT)  # resized at draw time
-        self._ray_intro_shown = False
+        from engine.professor import load_script
+        self._dlg = DialogueBox(200, 140, T.CURRENT, font_size=16)  # resized at draw time
+        self._paw_bot_intro_shown = False
 
         ETHOLOGY_INTRO = load_script(
-            "RAY", "ethology_intro",
-            fallback="RAY: Welcome to Robot Ethology!")
-        self._ray_intro_text = ETHOLOGY_INTRO
+            "PAW-BOT", "ethology_intro",
+            fallback="PAW-BOT: Welcome to Robot Ethology!")
+        self._paw_bot_intro_text = ETHOLOGY_INTRO
         self._last_dlg_time  = 0
         self._dlg.load(ETHOLOGY_INTRO)
 
+        # Clear any leftover working-arena edits from a previous session so they
+        # don't bleed into this launch. Edits are per-round scratch, not
+        # persistent state.
+        _clear_session_arena()
         self._arena_cfg = self._load_arena()
         self._robot_cfg = RobotConfig.from_file(
             os.path.join(GAME_DIR, "robot.json"))
 
+    def _bundle_arena(self):
+        """The BUNDLE arena — what the target robots act within. Used by target
+        observation, replay, and the reveal, so those are always FAITHFUL to the
+        challenge as authored, never affected by the player's own arena edits.
+        Precedence: bundle (arena_ref) -> default -> legacy.
+        Deliberately ignores session_current.json (the player's working edits).
+        """
+        candidates = []
+        bundle_arena = getattr(self._gs, "arena_ref", None)
+        if bundle_arena:
+            candidates.append(os.path.join(ARENAS_DIR, bundle_arena))
+        candidates += [_DEFAULT_ARENA,
+                       os.path.join(GAME_DIR, "ethology_arena.json")]
+        for path in candidates:
+            if os.path.exists(path):
+                return ArenaConfig.from_file(path)
+        return ArenaConfig()
+
+    def _working_arena(self):
+        """The player's WORKING arena — used when running a HYPOTHESIS and when
+        reloading after an edit. If the player has edited/loaded an arena this
+        round (session_current.json exists), that takes priority so the
+        hypothesis runs in the arena THEY made. Otherwise falls back to the
+        bundle arena, then default.
+        Precedence: session edit -> bundle (arena_ref) -> default -> legacy.
+        """
+        candidates = [_SESSION_ARENA]
+        bundle_arena = getattr(self._gs, "arena_ref", None)
+        if bundle_arena:
+            candidates.append(os.path.join(ARENAS_DIR, bundle_arena))
+        candidates += [_DEFAULT_ARENA,
+                       os.path.join(GAME_DIR, "ethology_arena.json")]
+        for path in candidates:
+            if os.path.exists(path):
+                return ArenaConfig.from_file(path)
+        return ArenaConfig()
+
+    # Backwards-compat shim: anything still calling _load_arena gets the
+    # bundle arena (the safe default for non-hypothesis contexts).
     def _load_arena(self):
-        return ArenaConfig.from_file(os.path.join(GAME_DIR, "ethology_arena.json"))
+        return self._bundle_arena()
+
+    def _working_arena_path(self) -> str:
+        """Filesystem path of the working arena (for passing to subprocesses):
+        session edit -> bundle -> default. Mirrors _working_arena()."""
+        if os.path.exists(_SESSION_ARENA):
+            return _SESSION_ARENA
+        bundle = getattr(self._gs, "arena_ref", None)
+        bp = os.path.join(ARENAS_DIR, bundle) if bundle else None
+        return bp if (bp and os.path.exists(bp)) else _DEFAULT_ARENA
+
 
     # ── Physics setup / teardown ──────────────────────────────────────────────
 
@@ -274,7 +359,7 @@ class Hub:
 
     def _start_observation(self):
         self._gs.new_game()
-        self._arena_cfg = self._load_arena()
+        self._arena_cfg = self._bundle_arena()
         self._start_physics()
 
         # Prune old observation recordings — keep only last 2 per label
@@ -288,7 +373,19 @@ class Hub:
                     try: os.remove(old)
                     except Exception: pass
 
-        poses = self._random_poses(2)
+        # Use arena robot_start as base position if defined;
+        # offset the two robots slightly so they don't overlap
+        if self._arena_cfg.robot_start_set:
+            # Convert builder heading (0=north) to PyBullet Z-rotation (0=east)
+            start_h = math.radians(self._arena_cfg.robot_start_deg)
+            bx = self._arena_cfg.robot_start_x
+            by = self._arena_cfg.robot_start_y
+            poses = [
+                (round(bx - 0.15, 3), by, start_h),
+                (round(bx + 0.15, 3), by, start_h),
+            ]
+        else:
+            poses = self._random_poses(2)
         src_a = self._gs.target_sketch_source("A")
         src_b = self._gs.target_sketch_source("B")
 
@@ -309,6 +406,33 @@ class Hub:
         self._runners[0].start_recording(rec_a)
         self._runners[1].start_recording(rec_b)
         self._obs_recordings = {"A": rec_a, "B": rec_b}
+        # Save arena snapshot alongside recordings for accurate replay
+        import json as _json
+        _arena_snap = os.path.join(rec_dir, f"obs_arena_{stamp}.json")
+        self._obs_arena_snap = _arena_snap
+        try:
+            with open(_arena_snap, "w", encoding="utf-8") as _f:
+                _json.dump({
+                    "width":    self._arena_cfg.width,
+                    "height":   self._arena_cfg.height,
+                    "wall_thickness": self._arena_cfg.wall_thickness,
+                    "light_sources": [
+                        {"x": ls.x, "y": ls.y, "radius": ls.radius,
+                         "intensity": ls.intensity,
+                         "color": getattr(ls, "color", "white")}
+                        for ls in self._arena_cfg.light_sources],
+                    "internal_walls": [
+                        {"x0": iw.x0, "y0": iw.y0,
+                         "x1": iw.x1, "y1": iw.y1,
+                         "thickness": iw.thickness}
+                        for iw in self._arena_cfg.internal_walls],
+                    "robot_start": {
+                        "x": self._arena_cfg.robot_start_x,
+                        "y": self._arena_cfg.robot_start_y,
+                        "heading_deg": self._arena_cfg.robot_start_deg},
+                }, _f, indent=2, ensure_ascii=False)
+        except Exception:
+            self._obs_arena_snap = None
 
         self._run_start   = time.monotonic()
         self._run_dur     = OBS_SECS
@@ -321,11 +445,19 @@ class Hub:
     # ── Experiment launch ─────────────────────────────────────────────────────
 
     def _start_experiment(self, robot_label: str, sketch_path: str):
-        self._arena_cfg = self._load_arena()
+        self._arena_cfg = self._working_arena()
         self._start_physics()
 
         target = self._gs.targets[robot_label]
-        poses  = self._random_poses(1)
+        # Use arena robot_start if defined, else random
+        if self._arena_cfg.robot_start_set:
+            # Convert builder heading (0=north) to PyBullet Z-rotation (0=east)
+            start_h = math.radians(self._arena_cfg.robot_start_deg)
+            poses   = [(self._arena_cfg.robot_start_x,
+                        self._arena_cfg.robot_start_y,
+                        start_h)]
+        else:
+            poses = self._random_poses(1)
 
         self._runners = [
             RobotRunner(self._robot_cfg, sketch_path,
@@ -347,7 +479,18 @@ class Hub:
 
     def _start_playback(self, labels: list[str]):
         """Start playback of recorded observation for given robot labels."""
-        from robosim.recorder import load_recording
+        from engine.recorder import load_recording
+        from engine.config import ArenaConfig
+
+        # Restore arena snapshot if available
+        snap = getattr(self, "_obs_arena_snap", None)
+        if snap and os.path.exists(snap):
+            try:
+                self._pb_arena_cfg = ArenaConfig.from_file(snap)
+            except Exception:
+                self._pb_arena_cfg = self._arena_cfg
+        else:
+            self._pb_arena_cfg = self._arena_cfg
 
         self._pb_frames  = {}
         self._pb_labels  = []
@@ -410,7 +553,7 @@ class Hub:
     # ── Old sketch-based replay (kept for experiment replay) ──────────────────
 
     def _start_replay(self, robot_label: str):
-        self._arena_cfg = self._load_arena()
+        self._arena_cfg = self._bundle_arena()
         self._start_physics()
 
         target  = self._gs.targets[robot_label]
@@ -523,8 +666,21 @@ class Hub:
 
     # ── Canvas drawing ────────────────────────────────────────────────────────
 
+    def _arena_rect(self):
+        """Aspect-preserving, inset canvas rect — shared with Field Trip.
+
+        RE previously drew straight into self._layout.arena, so the arena filled
+        the window to within MARGIN and the outer walls sat flush against the
+        edge (the bottom one reading as clipped). engine.arena.arena_rect adds
+        the same 0.92 fit Field Trip always had.
+        """
+        from engine.arena import arena_rect
+        return arena_rect(self._layout.arena,
+                          {"width":  self._arena_cfg.width,
+                           "height": self._arena_cfg.height})
+
     def _to_screen(self, wx, wy):
-        ar  = self._layout.arena
+        ar  = self._arena_rect()
         aw  = self._arena_cfg.width
         ah  = self._arena_cfg.height
         scl = min((ar.width  - MARGIN*2) / aw,
@@ -534,7 +690,7 @@ class Hub:
         return (int(cx + wx * scl), int(cy - wy * scl))
 
     def _scale(self):
-        ar = self._layout.arena
+        ar = self._arena_rect()
         return min((ar.width  - MARGIN*2) / self._arena_cfg.width,
                    (ar.height - MARGIN*2) / self._arena_cfg.height)
 
@@ -542,7 +698,32 @@ class Hub:
         cr = self._layout.arena
         pygame.draw.rect(surf, T.BG, cr)
 
-        cfg = self._arena_cfg
+        # ── Render probe ──────────────────────────────────────────────────────
+        # Robot Ethology does NOT draw through engine.arena.draw_arena — it has
+        # its own _to_screen/_draw_canvas pair. So the probe in draw_arena can
+        # never fire here, which is why an earlier attempt to capture RE's
+        # geometry printed nothing at all. Same env var, same output format, so
+        # the three games can be compared directly.
+        if os.environ.get("PAW_RENDER_PROBE") and not getattr(self, "_probed", False):
+            self._probed = True
+            _cfg = self._arena_cfg
+            _s = self._scale()
+            _aw, _ah = _cfg.width * _s, _cfg.height * _s
+            _cx = cr.left + cr.width // 2
+            _cy = cr.top + cr.height // 2
+            from engine.arena import _probe_emit
+            _probe_emit(f"[RENDER-PROBE] surf={surf.get_size()} rect={tuple(cr)} "
+                  f"arena={_cfg.width}x{_cfg.height} "
+                  f"wall_t={_cfg.wall_thickness} "
+                  f"scale={_s:.1f}px/m box={_aw:.0f}x{_ah:.0f} "
+                  f"top={_cy - _ah/2:.0f} bottom={_cy + _ah/2:.0f} "
+                  f"left={_cx - _aw/2:.0f} right={_cx + _aw/2:.0f} "
+                  f"[Robot Ethology, own renderer]")
+
+        # During playback, use the arena snapshot from recording time
+        cfg = getattr(self, "_pb_arena_cfg", None) \
+              if self._state == "playback" else None
+        cfg = cfg or self._arena_cfg
         aw, ah = cfg.width, cfg.height
         scl = self._scale()
         t   = cfg.wall_thickness
@@ -552,6 +733,25 @@ class Hub:
         br = self._to_screen( aw/2, -ah/2)
         floor_rect = pygame.Rect(tl[0], tl[1], br[0]-tl[0], br[1]-tl[1])
         pygame.draw.rect(surf, T.FLOOR, floor_rect)
+
+        # Shadows — cast by internal walls from each light source
+        try:
+            from engine.render_shadows import draw_shadows
+            _arena_dict = {
+                "width":  cfg.width, "height": cfg.height,
+                "light_sources": [
+                    {"x": ls.x, "y": ls.y, "radius": ls.radius,
+                     "color": getattr(ls, "color", "white")}
+                    for ls in cfg.light_sources],
+                "internal_walls": [
+                    {"x0": iw.x0, "y0": iw.y0,
+                     "x1": iw.x1, "y1": iw.y1}
+                    for iw in cfg.internal_walls],
+            }
+            draw_shadows(surf, _arena_dict, self._to_screen,
+                         self._scale(), cr)
+        except Exception:
+            pass
 
         # Lights — amber glow pools
         for ls in cfg.light_sources:
@@ -770,6 +970,11 @@ class Hub:
         pygame.draw.rect(surf, T.PANEL_DEEP, lay.narrative)
         self._draw_narrative(surf)
 
+        # ── Back button + confirm overlay ─────────────────────────────────
+        self._nav.draw_back_btn(surf, self._layout, self._font_sm, T)
+        self._nav.draw_overlay(surf, self._layout.ww, self._layout.wh,
+                               self._font_md, self._font_sm, self._btn_rects)
+
     def _draw_narrative(self, surf):
         """
         Draw the narrative region: dialogue when active, logo when idle.
@@ -795,7 +1000,7 @@ class Hub:
             # Narrative region is empty when idle — just the Play Intro button
             # "Play Intro" link bottom-left of narrative
             ir = pygame.Rect(x, nr.bottom - 26, 110, 22)
-            self._btn_rects["btn_ray_intro"] = ir
+            self._btn_rects["btn_paw_bot_intro"] = ir
             mx, my = pygame.mouse.get_pos()
             hov = ir.collidepoint(mx, my)
             pygame.draw.rect(surf, T.PANEL_DEEP if not hov else T.PANEL,
@@ -823,15 +1028,11 @@ class Hub:
             "Observe A and B  |  20 experiments", True, T.TEXT_DIM)
         surf.blit(hint, (x, y))
 
-        # Continue and Exit Game at bottom of controls region
+        # Continue at bottom of controls region
         btn_h  = 40
         btn_y  = lay.controls.bottom - btn_h - 10
         self._btn(surf, pygame.Rect(x, btn_y, w, btn_h),
                   "CONTINUE  ▶", "btn_continue", accent=True)
-        exit_h = 26
-        exit_y = btn_y - exit_h - 6
-        self._btn(surf, pygame.Rect(x, exit_y, w, exit_h),
-                  "Exit Game", "btn_exit_game")
 
     def _draw_running(self, surf, x, w):
         lay = self._layout
@@ -880,7 +1081,8 @@ class Hub:
             surf.blit(note, (x, y))
 
         if self._run_mode in ("experiment", "replay"):
-            btn_y = self._layout.controls.bottom - 50
+            # Anchor STOP below content with a small gap, min 8px from controls bottom
+            btn_y = min(y + 12, self._layout.controls.bottom - 50)
             self._btn(surf, pygame.Rect(x, btn_y, w, 40),
                       "STOP RUN", "btn_stop")
 
@@ -921,6 +1123,26 @@ class Hub:
             y += bh + 18
         draw_double_rule(surf, x, y, x+w); y += 12
 
+        # Inspect specimens — opens the read-only Robot Inspector. The
+        # ethologist gets a close look at the robots being studied.
+        ex_lbl = self._font_sm.render("Inspect specimen:", True, T.TEXT_DIM)
+        surf.blit(ex_lbl, (x, y)); y += 18
+        hw2 = (w - 4) // 2
+        self._btn(surf, pygame.Rect(x, y, hw2, 34),
+                  "Robot A", "btn_inspect_a",
+                  color=T.RED_PH if self._gs.targets.get("A")
+                  and self._gs.targets["A"].morphology else None,
+                  disabled=not (self._gs.targets.get("A")
+                                and self._gs.targets["A"].morphology))
+        self._btn(surf, pygame.Rect(x+hw2+4, y, hw2, 34),
+                  "Robot B", "btn_inspect_b",
+                  color=T.BLUE_PH if self._gs.targets.get("B")
+                  and self._gs.targets["B"].morphology else None,
+                  disabled=not (self._gs.targets.get("B")
+                                and self._gs.targets["B"].morphology))
+        y += 44
+        draw_double_rule(surf, x, y, x+w); y += 12
+
         # Recording replay — only shown while game is still active
         if not self._gs.is_over:
             rl_lbl = self._font_sm.render("Replay observation:", True, T.TEXT_DIM)
@@ -939,11 +1161,11 @@ class Hub:
             y += 44
             draw_double_rule(surf, x, y, x+w); y += 12
 
-            # Edit Arena — only during active game
-            lay  = self._layout
-            ea_y = lay.controls.bottom - 46
-            self._btn(surf, pygame.Rect(x, ea_y, w, 36),
+            # Edit Arena — flows after replay section
+            y += 8
+            self._btn(surf, pygame.Rect(x, y, w, 36),
                       "\u29c1  Edit Arena", "btn_edit_arena")
+            y += 44
 
         else:
             # Game over — HUD reveal + Play Again fill the controls region
@@ -968,21 +1190,62 @@ class Hub:
 
             self._btn(surf, pygame.Rect(x, y, w, 40),
                       "Play Again", "btn_new_game", accent=True)
-            self._btn(surf, pygame.Rect(x, y + 48, w, 26),
-                      "Exit Game", "btn_exit_game")
 
     # ── Button handlers ───────────────────────────────────────────────────────
 
-    def _handle_btn(self, name):
-        if name == "btn_exit_game":
-            self._exit_requested = True
+    def _draw_inspector_overlay(self, surf):
+        """Modal overlay hosting the Robot Inspector specimen view."""
+        sw, sh = surf.get_size()
+        # dim backdrop
+        dim = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 175))
+        surf.blit(dim, (0, 0))
+        # centered panel
+        pw = min(560, int(sw * 0.6))
+        ph = min(620, int(sh * 0.82))
+        panel = pygame.Rect((sw - pw) // 2, (sh - ph) // 2, pw, ph)
+        self._inspect_panel = panel
+        pygame.draw.rect(surf, T.PANEL_DEEP, panel, border_radius=8)
+        pygame.draw.rect(surf, T.PHOSPHOR, panel, 2, border_radius=8)
+        # close button
+        cb = pygame.Rect(panel.right - 40, panel.y + 12, 28, 28)
+        if cb.collidepoint(pygame.mouse.get_pos()):
+            pygame.draw.rect(surf, T.PANEL, cb, border_radius=4)
+        pygame.draw.rect(surf, T.PHOSPHOR, cb, 1, border_radius=4)
+        xf = self._font_md.render("\u2715", True, T.PHOSPHOR)
+        surf.blit(xf, (cb.centerx - xf.get_width() // 2,
+                       cb.centery - xf.get_height() // 2))
+        self._inspect_close_btn = cb
+        # the specimen view fills the panel interior below the header
+        inner = pygame.Rect(panel.x + 12, panel.y + 50,
+                            panel.width - 24, panel.height - 64)
+        self._inspector.draw(surf, inner)
+        hint = self._font_sm.render("Esc or \u2715 to close", True, T.TEXT_DIM)
+        surf.blit(hint, (panel.x + 14, panel.bottom - hint.get_height() - 8))
+
+    def _open_inspector(self, robot_label: str):
+        """Open the read-only Robot Inspector for robot A or B."""
+        t = self._gs.targets.get(robot_label)
+        if not t or not t.morphology:
             return
+        from engine.ethology.robot_inspector import RobotInspector
+        self._inspector = RobotInspector(
+            t.morphology, title=f"Robot {robot_label}",
+            robot_color=t.color)
+        self._inspect_robot = robot_label
+
+    def _close_inspector(self):
+        self._inspector = None
+        self._inspect_robot = None
+        self._inspect_close_btn = None
+
+    def _handle_btn(self, name):
 
         if name == "btn_continue":
             self._start_observation()
 
-        elif name == "btn_ray_intro":
-            self._dlg.load(self._ray_intro_text)
+        elif name == "btn_paw_bot_intro":
+            self._dlg.load(self._paw_bot_intro_text)
             self._last_dlg_time = int(time.monotonic() * 1000)
 
         elif name == "btn_stop":
@@ -991,6 +1254,9 @@ class Hub:
         elif name in ("btn_build_a", "btn_build_b"):
             robot_label = "A" if name == "btn_build_a" else "B"
             self._open_builder(robot_label)
+
+        elif name in ("btn_inspect_a", "btn_inspect_b"):
+            self._open_inspector("A" if name == "btn_inspect_a" else "B")
 
         elif name == "btn_replay_a":
             self._start_playback(["A"])
@@ -1016,24 +1282,28 @@ class Hub:
             self._state       = "welcome"
             self._last_result = ""
             self._obs_recordings = {}
+            # New round = new bundle arena; discard the previous round's arena
+            # edits so they don't carry into the new challenge.
+            _clear_session_arena()
             # Reset Ray's intro dialogue for the new game
-            self._dlg.load(self._ray_intro_text)
+            self._dlg.load(self._paw_bot_intro_text)
             self._last_dlg_time = int(time.monotonic() * 1000)
 
     def _draw_physical(self, surf, x, w):
         lay = self._layout
         y   = lay.ctrl_inner.y
-        mode_tag = "  [WiFi]" if self._phys_wifi else "  [IDE]"
+        _ble_flag  = getattr(self, "_phys_ble", False)
+        mode_tag = "  [BLE]" if _ble_flag else "  [IDE]"
         tt = self._font_hd.render(
             f"PHYSICAL — ROBOT {self._phys_robot}{mode_tag}",
             True, T.WHITE_GREEN)
         surf.blit(tt, (x, y)); y += 32
         draw_double_rule(surf, x, y, x+w); y += 16
 
-        # WiFi session indicator
-        if self._phys_wifi and self._phys_session:
+        # BLE session indicator
+        if getattr(self, "_phys_ble", False) and self._phys_session:
             si = self._font_sm.render(
-                f"session: {self._phys_session}", True, T.TEXT_DIM)
+                f"BLE session: {self._phys_session}", True, T.TEXT_DIM)
             surf.blit(si, (x, y)); y += 18
 
         # Elapsed clock
@@ -1141,21 +1411,16 @@ class Hub:
 
         pygame.display.set_mode((1, 1))
         pygame.display.set_caption("")
-        # DEV: use hierarchy_builder_dev.py (WiFi-enabled) while developing.
-        # TODO: fold WiFi changes back into hierarchy_builder.py and revert
-        #       this to os.path.join(GAME_DIR, "hierarchy_builder.py")
-        builder_script = os.path.join(ROOT, "hierarchy_builder_dev.py")
-        if not os.path.exists(builder_script):
-            builder_script = os.path.join(GAME_DIR, "hierarchy_builder.py")
+        builder_script = os.path.join(GAME_DIR, "hierarchy_builder.py")
         subprocess.run(
             [sys.executable,
              builder_script,
              "--robot",  robot_label,
              "--result", result_path,
-             "--arena",  os.path.join(GAME_DIR, "ethology_arena.json")],
+             "--arena",  self._working_arena_path()],
             cwd=ROOT)
         self._screen = pygame.display.set_mode((WW, WH))
-        pygame.display.set_caption("Curious Robotics")
+        pygame.display.set_caption("Robot Ethology")
         pygame.event.clear()
 
         if not os.path.exists(result_path):
@@ -1164,9 +1429,12 @@ class Hub:
         with open(result_path) as f:
             data = json.load(f)
 
-        if data.get("wifi"):
-            # Builder used WiFi path — robot is already running
+        if data.get("ble") and not data.get("simulate"):
+            # Builder connected via BLE — robot already running
             self._start_physical(robot_label, data)
+        elif data.get("simulate"):
+            # BLE failed, player chose simulation — run as normal sim
+            pass
         elif data.get("physical"):
             # Builder used IDE path — instructor uploads, we wait
             self._start_physical(robot_label, data)
@@ -1181,7 +1449,11 @@ class Hub:
         This is the post-game reveal — sensors and behavior state visible.
         """
         import datetime
-        arena_cfg_path = os.path.join(GAME_DIR, "ethology_arena.json")
+        # Reveal shows the TARGET robots, so use the faithful bundle arena
+        # (never the player's edits).
+        _bundle = getattr(self._gs, "arena_ref", None)
+        _bp = os.path.join(ARENAS_DIR, _bundle) if _bundle else None
+        arena_cfg_path = _bp if (_bp and os.path.exists(_bp)) else _DEFAULT_ARENA
         robot_cfg_path = os.path.join(GAME_DIR, "robot.json")
 
         COLORS = {"A": repr(T.RED_PH), "B": repr(T.BLUE_PH)}
@@ -1212,11 +1484,11 @@ class Hub:
         driver_code = f"""\
 import sys, os
 sys.path.insert(0, {repr(ROOT)})
-import robosim.theme as T
+import engine.theme as T
 T.apply({repr(T.CURRENT)})
-from robosim.config import ArenaConfig, RobotConfig
-from robosim.layout import Layout
-from robosim.simulation import Simulation
+from engine.config import ArenaConfig, RobotConfig
+from engine.layout import Layout
+from engine.simulation import Simulation
 
 arena_cfg = ArenaConfig.from_file({repr(arena_cfg_path)})
 robot_cfg  = RobotConfig.from_file({repr(robot_cfg_path)})
@@ -1236,7 +1508,7 @@ sim.run()
         pygame.display.set_caption("")
         subprocess.run([sys.executable, driver], cwd=ROOT)
         self._screen = pygame.display.set_mode((WW, WH))
-        pygame.display.set_caption("Curious Robotics")
+        pygame.display.set_caption("Robot Ethology")
         pygame.event.clear()
 
     def _show_feedback(self, robot_label: str, correct: bool) -> None:
@@ -1245,7 +1517,7 @@ sim.run()
         Loads scripts from scripts/robot_a/ or robot_b/.
         """
         import random
-        from robosim.professor import load_script
+        from engine.professor import load_script
         folder = f"robot_{robot_label.lower()}"
 
         if correct:
@@ -1266,8 +1538,8 @@ sim.run()
                 ray_script = "ethology_both_solved"
             else:
                 ray_script = "ethology_one_down"
-            ray_text = load_script("RAY", ray_script, fallback="RAY: Well done!")
-            text = text.strip() + "\n\n" + ray_text.strip()
+            paw_bot_text = load_script("PAW-BOT", ray_script, fallback="PAW-BOT: Well done!")
+            text = text.strip() + "\n\n" + paw_bot_text.strip()
 
         # Load into dialogue and make it visible
         self._dlg.load(text)
@@ -1281,31 +1553,28 @@ sim.run()
         self._phys_start     = time.monotonic()
         self._phys_robot     = robot_label
         self._phys_hierarchy = data.get("hierarchy", [])
-        self._phys_wifi      = bool(data.get("wifi", False))
+        self._phys_ble       = bool(data.get("ble",  False))
         self._phys_session   = data.get("session", "")
-        self._phys_host      = data.get("host", "")
-        self._phys_port      = int(data.get("port", 80))
+        self._phys_device    = data.get("device", "RobotA")
         self._state          = "physical"
 
     def _finish_physical(self):
         """Evaluate physical experiment result — same logic as simulated."""
-        # Stop the WiFi robot if one is running
-        if self._phys_wifi and self._phys_session:
+        # Stop the BLE robot if one is running
+        if getattr(self, "_phys_ble", False) and self._phys_session:
             try:
-                sys.path.insert(0, ROOT)
-                from robot_wifi_client import RobotWiFiClient
-                client = RobotWiFiClient(
-                    host=self._phys_host,
-                    port=self._phys_port,
-                    timeout=3.0)
+                from engine.bluetooth.robot_bt_client import RobotBLEClient
+                client = RobotBLEClient(
+                    getattr(self, "_phys_device", "RobotA"))
                 result = client.stop(self._phys_session)
                 if not result.get("ok"):
                     self._last_result = (
-                        f"WiFi stop failed: {result.get('error', '?')} "                        f"— evaluate anyway")
+                        f"BLE stop failed: {result.get('error', '?')} "
+                        f"— evaluate anyway")
             except Exception as e:
-                self._last_result = f"WiFi stop error: {e} — evaluate anyway"
+                self._last_result = f"BLE stop error: {e} — evaluate anyway"
             finally:
-                self._phys_wifi    = False
+                self._phys_ble     = False
                 self._phys_session = ""
 
         try:
@@ -1319,14 +1588,32 @@ sim.run()
     def _edit_arena(self):
         pygame.display.set_mode((1, 1))
         pygame.display.set_caption("")
+        # Determine the starting point for the edit: the player's working arena.
+        # If they've already edited this round (session file exists) continue
+        # from that; otherwise seed from the BUNDLE arena they've been observing
+        # (so the first edit restructures the challenge arena).
+        if not os.path.exists(_SESSION_ARENA):
+            bundle = getattr(self._gs, "arena_ref", None)
+            bp = os.path.join(ARENAS_DIR, bundle) if bundle else None
+            seed = bp if (bp and os.path.exists(bp)) else _DEFAULT_ARENA
+            # Seed the session file from the bundle/default so the editor writes
+            # to session_current.json and NEVER overwrites the bundle original
+            # (which must stay faithful for replays / Play Again).
+            try:
+                if os.path.exists(seed):
+                    import shutil
+                    shutil.copyfile(seed, _SESSION_ARENA)
+            except OSError:
+                pass
         subprocess.run(
             [sys.executable,
              os.path.join(TOOLS_DIR, "arena_builder.py"),
-             "--arena", os.path.join(GAME_DIR, "ethology_arena.json")],
+             "--arena", _SESSION_ARENA],
             cwd=ROOT)
         self._screen = pygame.display.set_mode((WW, WH))
-        pygame.display.set_caption("Curious Robotics")
-        self._arena_cfg = self._load_arena()
+        pygame.display.set_caption("Robot Ethology")
+        # After editing, the working arena reflects the player's edit.
+        self._arena_cfg = self._working_arena()
         pygame.event.clear()
 
     # ── Main loop ─────────────────────────────────────────────────────────────
@@ -1359,9 +1646,12 @@ sim.run()
             self._pb_scrubber = pygame.Rect(0, 0, 0, 0)
             self._draw_canvas(self._screen)
             self._draw_panel(self._screen)
+            # Robot Inspector overlay — drawn last, on top, when active.
+            if self._inspector is not None:
+                self._draw_inspector_overlay(self._screen)
             pygame.display.flip()
 
-            if self._exit_requested:
+            if self._exit_requested or self._nav.confirmed:
                 running = False
 
             for event in pygame.event.get():
@@ -1369,6 +1659,13 @@ sim.run()
                     running = False
 
                 elif event.type == pygame.KEYDOWN:
+                    # Inspector overlay captures input while open.
+                    if self._inspector is not None:
+                        if event.key in (pygame.K_ESCAPE, pygame.K_RETURN):
+                            self._close_inspector()
+                        continue
+                    if self._nav.handle_key(event.key):
+                        continue
                     # Dialogue advance in welcome or experiment state
                     if self._state in ("welcome", "experiment") and \
                             not self._dlg.is_done and \
@@ -1402,6 +1699,20 @@ sim.run()
                             running = False
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    # Inspector overlay captures all clicks while open: the
+                    # close button (or a click outside the panel) dismisses it.
+                    if self._inspector is not None:
+                        if (self._inspect_close_btn and
+                                self._inspect_close_btn.collidepoint(event.pos)):
+                            self._close_inspector()
+                        elif (self._inspect_panel and
+                              not self._inspect_panel.collidepoint(event.pos)):
+                            self._close_inspector()
+                        continue
+                    # Nav overlay always gets first priority — never blocked
+                    if self._nav.handle_click(event.pos, self._layout,
+                                              self._btn_rects):
+                        continue
                     # Feedback dialogue advance (experiment state)
                     if self._state == "experiment" and \
                             self._show_dlg_in_experiment and \
@@ -1413,14 +1724,14 @@ sim.run()
                         self._dlg.advance()
                         continue
                     # Replay intro button
-                    if "btn_ray_intro" in self._btn_rects and \
-                            self._btn_rects["btn_ray_intro"].collidepoint(
+                    if "btn_paw_bot_intro" in self._btn_rects and \
+                            self._btn_rects["btn_paw_bot_intro"].collidepoint(
                                 event.pos):
-                        self._dlg.load(self._ray_intro_text)
+                        self._dlg.load(self._paw_bot_intro_text)
                         self._last_dlg_time = int(time.monotonic() * 1000)
                         continue
                     if self._state == "playback":
-                        if hasattr(self, '_pb_scrubber') and \
+                        if hasattr(self, "_pb_scrubber") and \
                                 self._pb_scrubber.collidepoint(event.pos):
                             self._pb_seek(event.pos[0])
                             self._pb_playing = False
@@ -1451,7 +1762,7 @@ sim.run()
 
 
 if __name__ == "__main__":
-    import robosim.theme as T
+    import engine.theme as T
     T.apply(T.load_saved_theme())
     from games.ethology.game import GameState
     gs = GameState()

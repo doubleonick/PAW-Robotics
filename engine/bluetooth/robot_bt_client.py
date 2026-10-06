@@ -62,7 +62,9 @@ Bluetooth adapter setup (HC-05 / HC-06 classic BT on Arduino)
 
 from __future__ import annotations
 
+import asyncio
 import json
+import threading
 import time
 from typing import Any
 
@@ -206,7 +208,7 @@ class RobotBTClient:
         ----------
         hierarchy : list of str
             Ordered behavior keys, highest priority first.
-            e.g. ["escape_front", "avoid_object", "seek_light", "cruise_straight"]
+            e.g. ["escape_front", "avoid_object", "approach_light", "cruise_straight"]
 
         Returns
         -------
@@ -305,7 +307,7 @@ class RobotBLEClient:
         from engine.bluetooth.robot_bt_client import RobotBLEClient
 
         # Synchronous wrapper (runs its own event loop):
-        client = RobotBLEClient("PAW-Ethology")   # device name or MAC
+        client = RobotBLEClient("RobotA")   # device name or MAC
         print(client.ping())
         print(client.send_hierarchy(["escape_front", "cruise_straight"]))
         ...
@@ -327,7 +329,7 @@ class RobotBLEClient:
         Parameters
         ----------
         device_name_or_address : str
-            BLE device name (e.g. "PAW-Ethology") or MAC address.
+            BLE device name (e.g. "RobotA") or MAC address.
             Name matching is case-insensitive and substring-based.
         timeout : float
             Per-operation timeout in seconds.
@@ -339,7 +341,6 @@ class RobotBLEClient:
 
     def _run(self, coro):
         """Run an async coroutine synchronously."""
-        import asyncio
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
@@ -401,7 +402,7 @@ class RobotBLEClient:
             await client.start_notify(self.DATA_UUID, on_notify)
             cmd = json.dumps(obj) + "\n"
             await client.write_gatt_char(
-                self.CMD_UUID, cmd.encode("utf-8"), response=False)
+                self.CMD_UUID, cmd.encode("utf-8"), response=True)
             # Wait up to timeout for a response
             deadline = asyncio.get_event_loop().time() + self._timeout
             while not received:
@@ -412,12 +413,33 @@ class RobotBLEClient:
             return received[0]
 
     def _cmd(self, obj: dict) -> dict:
-        """Synchronous send-and-receive wrapper."""
-        try:
-            import asyncio
-            return asyncio.run(self._send_recv(obj))
-        except Exception as e:
-            return {"error": str(e)}
+        """Synchronous send-and-receive wrapper.
+        Runs the async coroutine in a background thread with its own
+        event loop — avoids conflicts with existing loops and works
+        reliably on Windows with the WinRT BLE stack.
+        """
+        result_holder = []
+        error_holder  = []
+
+        def _run():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result_holder.append(loop.run_until_complete(
+                    self._send_recv(obj)))
+            except Exception as e:
+                error_holder.append(e)
+            finally:
+                loop.close()
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        t.join(timeout=self._timeout + self.SCAN_TIMEOUT + 5)
+        if error_holder:
+            return {"error": str(error_holder[0])}
+        if not result_holder:
+            return {"error": "BLE operation timed out"}
+        return result_holder[0]
 
     # ── Public API (identical to RobotBTClient) ───────────────────────────────
 
@@ -466,3 +488,60 @@ class RobotBLEClient:
 
     def __repr__(self) -> str:
         return f"RobotBLEClient({self._target!r})"
+
+
+# ── Robot discovery (for the A/B picker) ─────────────────────────────────────
+def scan_paw_robots(prefix: str = "Robot", timeout: float = 8.0) -> list:
+    """Scan for PAW robots advertising over BLE and return a list of
+    (name, address) for every device whose name starts with `prefix`.
+
+    Used by the Hierarchy Builder's scan→pick→connect flow so the instructor
+    can choose Robot A vs Robot B when both are powered on. Each robot's
+    firmware advertises a distinct name (RobotA / RobotB) via
+    BLE.setLocalName(); this enumerates whichever are in range.
+
+    Returns [] if none found (caller shows a timeout / "make sure the robot is
+    on and near the computer" message). Requires bleak (pip install bleak).
+
+    IMPORTANT (Windows): bleak's WinRT backend needs the COM threading model to
+    be MTA, but pygame/SDL puts the main thread in STA, which makes bleak fail
+    with "Thread is configured for Windows GUI but callbacks are not working."
+    So we run the whole scan on a DEDICATED worker thread (which defaults to
+    MTA), never on pygame's STA main thread.
+    """
+    async def _scan():
+        try:
+            from bleak import BleakScanner
+        except ImportError:
+            raise RuntimeError("bleak is required.  Install: pip install bleak")
+        found = {}
+        async with BleakScanner() as scanner:
+            await asyncio.sleep(timeout)
+            for d in scanner.discovered_devices:
+                name = d.name or ""
+                if name.upper().startswith(prefix.upper()):
+                    found[d.address] = name      # dedupe by address
+        # sort by name so RobotA lists before RobotB
+        return sorted(((n, a) for a, n in found.items()), key=lambda t: t[0])
+
+    # Run on a separate thread with its own fresh event loop. A new (non-main)
+    # thread is MTA by default on Windows, which is what bleak/WinRT requires.
+    import concurrent.futures
+
+    def _runner():
+        # Some imported package (pywin32 / pythoncom, pulled in indirectly) may
+        # have initialised this process's COM threading model to STA, which makes
+        # bleak's WinRT backend fail with "Thread is configured for Windows GUI
+        # but callbacks are not working." bleak provides uninitialize_sta() to
+        # undo that side effect; call it before any bleak API. No-op / ImportError
+        # on non-Windows or older bleak, which we ignore.
+        try:
+            from bleak.backends.winrt.util import uninitialize_sta
+            uninitialize_sta()
+        except Exception:
+            pass
+        return asyncio.run(_scan())
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        fut = ex.submit(_runner)
+        return fut.result(timeout + 6)

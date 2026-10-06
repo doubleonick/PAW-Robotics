@@ -1,0 +1,3 @@
+PAW-BOT: Failed to connect to your robot.  Please make sure your computer's Bluetooth is turned ON, and that your Arduino is powered and discoverable.
+
+PAW-BOT: Press "Try Again" to attempt reconnection, or "Continue in Simulation" to test your hypothesis with a simulated robot instead.

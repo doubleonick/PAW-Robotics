@@ -1,0 +1,10 @@
+{
+  "_hierarchy_name": "Default Target",
+  "_description": "The current dev target hierarchy. Behaviors are a PRIORITY-ORDERED list: earlier entries override later ones (subsumption-style). 'cruise_straight' is the default fallback at the bottom.",
+  "behaviors": [
+    "escape_front",
+    "avoid_object",
+    "approach_light",
+    "cruise_straight"
+  ]
+}

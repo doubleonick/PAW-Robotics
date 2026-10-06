@@ -117,7 +117,7 @@ class LDREthologyRobot:
         else:
             self._state = _S.CRUISE
 
-    def escape_rear(self) -> None:
+    def escape_back(self) -> None:
         """Spin away from rear contact. Runs to completion."""
         millis = getattr(self, "_millis_fn", None)
         now    = millis() if millis else 0
@@ -153,7 +153,7 @@ class LDREthologyRobot:
         else:
             self._servo.driveProportional(AVOID_SPD // 4, AVOID_SPD, 0)
 
-    def seek_light(self) -> None:
+    def approach_light(self) -> None:
         self._state = _S.SEEK
         ll = int(self._leftLight.getRawData())
         rl = int(self._rightLight.getRawData())

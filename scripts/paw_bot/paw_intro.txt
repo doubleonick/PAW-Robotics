@@ -1,0 +1,9 @@
+PAW-BOT: Welcome to PAW Robotics! I'm PAW-Bot, your guide through the world of behavior-based robotics.  (Press SPACE to advance the narration.)
+
+PAW-BOT: Any agent, whether biological, or robotic, exists in a Perception Action World (PAW) system.
+
+PAW-BOT: The agent perceives aspects of the world: the intensity of ambient light, the distance to nearby objects.  These perceptions yield small actions, which in turn change the world and the agent's place in, and perception of it.
+
+PAW-BOT: All three pieces: the WORLD, PERCEPTION of that world, and ACTION taken in it are woven together in impressive ways. 
+
+PAW-BOT: Each PAW Robotics  game explores that system from a different angle. Pick one from the menu to begin. 

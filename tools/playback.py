@@ -26,8 +26,8 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pygame
-from robosim.recorder import load_recording, Frame
-from robosim.config import ArenaConfig
+from engine.recorder import load_recording, Frame
+from engine.config import ArenaConfig
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

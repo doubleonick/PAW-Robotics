@@ -1,0 +1,21 @@
+{
+  "_description": "Default Robot Ethology arena. Do not edit — use Save As to create your own.",
+  "width": 1.5,
+  "height": 2.5,
+  "wall_thickness": 0.05,
+  "light_sources": [
+    {
+      "x": 0.30,
+      "y": 0.75,
+      "intensity": 1.2,
+      "radius": 0.40
+    }
+  ],
+  "internal_walls": [],
+  "robot_start": {
+    "x": 0.0,
+    "y": -0.90,
+    "heading_deg": 90.0
+  }
+}
+

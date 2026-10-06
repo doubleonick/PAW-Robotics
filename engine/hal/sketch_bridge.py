@@ -174,7 +174,21 @@ class CogServo:
     ignored so sketches written for either library transpile cleanly.
     """
 
-    NEUTRAL = 90.0    # degrees — stop
+    # ── Microseconds, mirroring firmware/shared/CogServo ──────────────────
+    # This shim used to map proportions to ANGLES and call Servo.write().
+    # The firmware moved to writeMicroseconds() because Servo.h maps
+    # write(angle) onto 544..2400 us, so write(90) emits 1472 us — 28 us below
+    # neutral, about 14% of full speed. "Stop" was a slow spin.
+    #
+    # Values here must match CogServo.h exactly, or the simulator drives at a
+    # different speed from the robot: at CRUISE_SPEED 60 the old angle path
+    # produced 915 us where the firmware produces 1140 us.
+    NEUTRAL_US = 1500
+    SPAN_US    = 600     # +/-100 -> neutral -/+ 600
+    MIN_US     = 900
+    MAX_US     = 2100
+
+    NEUTRAL = NEUTRAL_US   # legacy alias; several getters still say "angle"
     ANGLE_MIN = 0.0
     ANGLE_MAX = 180.0
 
@@ -182,8 +196,8 @@ class CogServo:
         # pwm_driver accepted but ignored
         self._left_pin:   Any   = None
         self._right_pin:  Any   = None
-        self._left_angle: float = self.NEUTRAL
-        self._right_angle:float = self.NEUTRAL
+        self._left_angle: float = self.NEUTRAL_US    # microseconds, despite the name
+        self._right_angle:float = self.NEUTRAL_US
 
     def begin(self, left_pin, right_pin, init_pwm=True) -> None:
         self._left_pin  = left_pin
@@ -192,10 +206,13 @@ class CogServo:
 
     def driveProportional(self, left_prop: int, right_prop: int,
                           duration: float) -> None:
-        # Mirror CogServo.cpp: negate right before mapping
-        right_prop        = -right_prop
-        self._left_angle  = self._prop_to_angle(left_prop)
-        self._right_angle = self._prop_to_angle(right_prop)
+        # Mirror CogServo.cpp EXACTLY: it negates the LEFT proportion, not
+        # the right. This shim negated the right instead — the mirror image.
+        # It happened to look correct because both sides were then mapped
+        # through a symmetric function, but it inverted every turn.
+        left_prop         = -left_prop
+        self._left_angle  = self._prop_to_us(left_prop)
+        self._right_angle = self._prop_to_us(right_prop)
         self._write_angles(self._left_angle, self._right_angle)
         if duration > 0 and _delay_fn:
             _delay_fn(duration * 1000)
@@ -229,20 +246,23 @@ class CogServo:
     def get_left_angle(self)  -> float: return self._left_angle
     def get_right_angle(self) -> float: return self._right_angle
 
-    @staticmethod
-    def _prop_to_angle(prop: int) -> float:
-        """[-100, 100] → [0, 180] degrees. Neutral (0) → 90°."""
-        prop = max(-100, min(100, prop))
-        return float((prop + 100) * 180 / 200)
+    @classmethod
+    def _prop_to_us(cls, prop: int) -> float:
+        """[-100, 100] -> microseconds about neutral. 0 -> 1500.
 
-    @staticmethod
-    def _clamp(v: float) -> float:
-        return max(0.0, min(180.0, v))
+        Matches CogServo::mapProportionToMicros: neutral - prop*SPAN/100.
+        """
+        prop = max(-100, min(100, prop))
+        return cls._clamp(cls.NEUTRAL_US - (prop * cls.SPAN_US) / 100.0)
+
+    @classmethod
+    def _clamp(cls, v: float) -> float:
+        return max(float(cls.MIN_US), min(float(cls.MAX_US), v))
 
     def _write_neutral(self) -> None:
-        self._left_angle  = self.NEUTRAL
-        self._right_angle = self.NEUTRAL
-        self._write_angles(self.NEUTRAL, self.NEUTRAL)
+        self._left_angle  = self.NEUTRAL_US
+        self._right_angle = self.NEUTRAL_US
+        self._write_angles(self.NEUTRAL_US, self.NEUTRAL_US)
 
     def _write_angles(self, left: float, right: float) -> None:
         if _write_pin and self._left_pin is not None:
@@ -402,9 +422,13 @@ class SketchBridge:
                     _lock_until_ms(duration * 1000)
 
             def driveProportional(self, left_prop, right_prop, duration):
-                right_prop        = -right_prop
-                self._left_angle  = self._prop_to_angle(left_prop)
-                self._right_angle = self._prop_to_angle(right_prop)
+                # Same conversion as the base class: MICROSECONDS, and it is
+                # the LEFT proportion that CogServo.cpp negates. This override
+                # exists only to add the tick lock below, so the maths must
+                # not diverge from the parent — it silently did before.
+                left_prop         = -left_prop
+                self._left_angle  = self._prop_to_us(left_prop)
+                self._right_angle = self._prop_to_us(right_prop)
                 self._write_angles(self._left_angle, self._right_angle)
                 if duration > 0 and _df:
                     _df(duration * 1000)
@@ -438,7 +462,8 @@ class SketchBridge:
             # factory stays in sync with the robot description.
             # Fallback to physical defaults if robot.json not found.
             _pins = {"leftProx":"A0","rightProx":"A1","leftLight":"A2",
-                     "rightLight":"A3","leftFrontBump":"D2","rightFrontBump":"D2"}
+                     "rightLight":"A3","leftFrontBump":"D4","rightFrontBump":"D2",
+                     "leftBackBump":"D8","rightBackBump":"D7"}
             _rjson = _os.path.join(
                 _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
                 "..", "games", "ethology", "robot.json")
@@ -463,9 +488,29 @@ class SketchBridge:
             obj.rightLight       = _CogLight(_pins["rightLight"])
             obj.leftFrontBump    = _CogCollision(_pin_int(_pins["leftFrontBump"]))
             obj.rightFrontBump   = _CogCollision(_pin_int(_pins["rightFrontBump"]))
+            obj.leftBackBump     = _CogCollision(_pin_int(_pins.get("leftBackBump",  "D8")))
+            obj.rightBackBump    = _CogCollision(_pin_int(_pins.get("rightBackBump", "D7")))
+            # State that __init__ would have set. This factory uses
+            # __new__ to bypass __init__ (so it can inject bound sensor
+            # classes), which means EVERY member the class relies on must be
+            # listed HERE too. It is a hand-maintained duplicate of __init__
+            # and it silently rots: cruiseArc's _arcLeft/_arcUntilMs and the
+            # proximity cache were added to the class and not here, so every
+            # generated sketch raised AttributeError on the first tick and
+            # the robot simply did not move.
+            obj._leftProxData       = 60      # far
+            obj._rightProxData      = 60
             obj._lightGradient      = 0
             obj._leftFrontBumpData  = 1
             obj._rightFrontBumpData = 1
+            obj._leftBackBumpData   = 1
+            obj._rightBackBumpData  = 1
+            obj._arcLeft            = False
+            obj._arcUntilMs         = 0.0
+            obj._escape_start       = 0
+            obj._escape_dir         = 1
+            obj._in_escape          = False
+            obj._contact_cooldown_until = 0.0
             obj._millis_fn       = _mf
             obj._robot_label     = ""
             obj._robot_color     = (60, 160, 230)

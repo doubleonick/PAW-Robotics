@@ -1,0 +1,32 @@
+{
+    "_description": "Registry of replay bundles for Robot Ethology. Each entry pairs an arena, two morphologies (robot A and B), and a shared hierarchy into a known-good replay. This is the single source of valid replays regardless of origin: hand-curated bundles AND (eventually) constrained-generation output both append entries here. Entry names are prefixed by origin: 'CB' = curated bundle (hand-authored), 'AG' = auto-generated (constrained generation). The FW-006 instructor tool will read/write this file.",
+    "replays": [
+        {
+            "name": "CB: Splay vs Close (default target)",
+            "origin": "CB",
+            "arena": "arena_default.json",
+            "morph_a": "morph_wide_splayed.json",
+            "morph_b": "morph_forward_close.json",
+            "hierarchy_a": "hier_default_target.json",
+            "hierarchy_b": "hier_default_target.json"
+        },
+        {
+            "name": "CB: Light and Dark (default target)",
+            "origin": "CB",
+            "arena": "arena_roach_house.json",
+            "morph_a": "morph_wide_splayed.json",
+            "morph_b": "morph_wide_splayed.json",
+            "hierarchy_a": "hier_roach_target.json",
+            "hierarchy_b": "hier_moth_target.json"
+        },
+        {
+            "name": "CB: Spiral (centre start, corner light)",
+            "origin": "CB",
+            "arena": "arena_spiral.json",
+            "morph_a": "morph_wide_splayed.json",
+            "morph_b": "morph_forward_close.json",
+            "hierarchy_a": "hier_default_target.json",
+            "hierarchy_b": "hier_default_target.json"
+        }
+    ]
+}

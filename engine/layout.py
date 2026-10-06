@@ -1,7 +1,7 @@
 """
 engine/layout.py
 ------------------
-Layout manager for Curious Robotics game screens.
+Layout manager for PAW Robotics game screens.
 
 Screen is divided into:
   - Left panel (PANEL_FRAC of total width)

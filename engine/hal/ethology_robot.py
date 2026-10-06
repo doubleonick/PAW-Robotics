@@ -6,39 +6,54 @@ from ethologyPrototypeV2 so simulation and physical robot produce identical
 behaviour for identical sensor inputs.
 
 Sensor scaling (matches physical CogProximity/CogLight):
-  CogProximity.getData()  → clamp raw [120,720] → map to [60,18] cm
+  CogProximity.getData()  → clamp raw [120,720] → map to [60,18] CENTIMETRES
+                            (the sensor's PRACTICAL band, not the 10-80 cm
+                            datasheet nominal — the firmware's own comment in
+                            CogProximity::analyzeData says [10,80] and is wrong;
+                            the code maps to [60,18] and is right)
                             closer object = SMALLER number
   CogLight.getData()      → map raw [0,1023] → [0,100]
                             brighter = LARGER number
 
-Thresholds (match EthologyRobot.h constants):
-  PROX_THRESHOLD  = 35 cm   (proximity met if getData() <= 35)
-  LIGHT_THRESHOLD = 15       (gradient met if abs(R-L) >= 15)
-  COLL_THRESHOLD  = 1        (collision met if getData() == 0)
-
-Target hierarchy for robots A and B:
-  escape_front → avoid_object → seek_light → cruise_straight
-
-driveProportional(left, right, duration):
-  Matches physical CogServo.cpp / Robot.cpp convention.
-  duration > 0 on physical robot causes blocking delay();
-  in simulation the call is non-blocking — the simulation tick
-  rate determines effective duration.
+Thresholds and drive tuning: see the constants below.
 """
 
-from __future__ import annotations
-from typing import Any
+import time
+import random
 
+# ── Tuning constants ──────────────────────────────────────────────────────────
+# MIRRORS firmware/shared/EthologyRobot.h, which is vetted on hardware. Every
+# value here must match its C++ counterpart: the simulator and the robot are
+# supposed to be the same robot, and a divergence teaches students behaviour
+# the hardware does not perform. Change both together or neither.
+#
+# PROX_THRESHOLD is in CENTIMETRES. getData() maps raw [120,720] -> [60,18] cm
+# and SATURATES at 18 (a wall at 18 cm and one at 2 cm read the same), which
+# matters only if the threshold is ever raised. 35 is confirmed on hardware.
+PROX_THRESHOLD  = 35
+LIGHT_THRESHOLD = 15    # abs(rightLight - leftLight) needed to trigger
 
-# ── Constants — mirror EthologyRobot.h ───────────────────────────────────────
+# Drive tuning. An arc is NOT cruise with one wheel boosted: the inner wheel
+# drops well below cruise and the outer stays below it too, so an arc is a
+# slow tight turn rather than a fast drift.
+CRUISE_SPEED    = 60
+ARC_INNER_SPEED = 30
+ARC_OUTER_SPEED = 50
+CRUISE_SECONDS  = 0.1
+ESCAPE_SECONDS  = 0.8   # both escapes; 0.1 was one tick and unobservable
 
-PROX_THRESHOLD  = 15    # cm — getData() <= this means object present
-LIGHT_THRESHOLD = 10    # getData() units — abs gradient to trigger light beh.
+# cruise_arc holds a direction this long before re-flipping. Flipping every
+# tick made successive arcs cancel into a straight wobble.
+ARC_HOLD_MIN_MS = 700
+ARC_HOLD_MAX_MS = 1900
+
 COLL_THRESHOLD  = 1     # collision met when getData() == 0 (INPUT_PULLUP logic)
 
 
 class EthologyRobot:
     """
+
+
     Python equivalent of EthologyRobot (ethologyPrototypeV2).
 
     Sensors are public attributes matching the C++ layout:
@@ -67,11 +82,30 @@ class EthologyRobot:
         self.leftLight      = CogLight("A2")
         self.rightFrontBump = CogCollision(2)
         self.leftFrontBump  = CogCollision(4)
+        # Back bumpers — pins match firmware EthologyRobot.h (D7/D8). Without
+        # these the sim declared _leftBackBumpData/_rightBackBumpData but had
+        # no sensors to fill them, so escape_back could never fire.
+        self.rightBackBump  = CogCollision(7)
+        self.leftBackBump   = CogCollision(8)
 
-        # Cached values set by threshold checks
+        # ── Cached sensor values ──────────────────────────────────────────
+        # Initialised to a RESTING WORLD, not to zero. Zero is not safe here:
+        # collisionThreshold() treats 0 as PRESSED and proximityThreshold()
+        # treats low as NEAR, so zeroed members read as "pinned against an
+        # object" until the first readSensors(). The C++ side has the same
+        # initialisers.
+        self._leftProxData       = 60   # far (getData() maps to [60,18] cm)
+        self._rightProxData      = 60
         self._lightGradient      = 0
-        self._leftFrontBumpData  = 1   # INPUT_PULLUP default = 1 (not pressed)
+        self._leftFrontBumpData  = 1    # INPUT_PULLUP default = 1 (not pressed)
         self._rightFrontBumpData = 1
+        self._leftBackBumpData   = 1
+        self._rightBackBumpData  = 1
+
+        # cruise_arc holds one direction for ARC_HOLD_MIN/MAX_MS before
+        # re-flipping. 0 forces a fresh pick on the first call.
+        self._arcLeft    = False
+        self._arcUntilMs = 0.0
 
         # Escape timing
         self._escape_start = 0
@@ -98,18 +132,46 @@ class EthologyRobot:
     # Each caches sensor readings for use by the corresponding behavior.
     # Order matches EthologyRobot.cpp exactly.
 
+    def readSensors(self) -> None:
+        """Halt, then sample every sensor once into the cache.
+
+        Mirrors EthologyRobot::readSensors(). Call at the top of each
+        hierarchy tick.
+
+        WITHOUT THIS the ported behaviours read cached values that were only
+        ever set in __init__ — a resting world where nothing is near and there
+        is no light gradient — so a guard could pass while the behaviour it
+        gates saw stale data and took no branch. That is exactly what stopped
+        Robot A and B moving after the dev15f port.
+
+        The halt is deliberate: servos latch, so a tick that decides to do
+        nothing must leave the robot stopped. It also quietens the analog
+        reads on hardware.
+        """
+        self._servo.halt(0.0)
+
+        self._rightProxData      = self.rightProx.getData()
+        self._leftProxData       = self.leftProx.getData()
+        self._lightGradient      = (self.rightLight.getData() -
+                                    self.leftLight.getData())
+        self._leftFrontBumpData  = self.leftFrontBump.getData()
+        self._rightFrontBumpData = self.rightFrontBump.getData()
+        self._leftBackBumpData   = self.leftBackBump.getData()
+        self._rightBackBumpData  = self.rightBackBump.getData()
+
     def proximityThreshold(self) -> bool:
-        """True if either proximity sensor reports object within PROX_THRESHOLD cm."""
-        return (self.rightProx.getData() <= PROX_THRESHOLD or
-                self.leftProx.getData()  <= PROX_THRESHOLD)
+        """True if either proximity sensor reports an object within
+        PROX_THRESHOLD centimetres. Reads the cache, so the guard and the
+        behaviour it gates always see the same sample."""
+        return (self._rightProxData <= PROX_THRESHOLD or
+                self._leftProxData  <= PROX_THRESHOLD)
 
     def lightGradientThreshold(self) -> bool:
         """
         True if left/right light sensors differ by >= LIGHT_THRESHOLD.
         Caches _lightGradient = rightLight - leftLight.
         """
-        self._lightGradient = (self.rightLight.getData() -
-                               self.leftLight.getData())
+        # value cached by readSensors()
         return abs(self._lightGradient) >= LIGHT_THRESHOLD
 
     def collisionThreshold(self) -> bool:
@@ -155,117 +217,141 @@ class EthologyRobot:
         can fire again.  Cooldown matches the escape arc duration (0.8s)
         plus a small margin.
         """
-        import time as _time
         self._leftFrontBumpData  = 1
         self._rightFrontBumpData = 1
-        self._contact_cooldown_until = _time.monotonic() + 1.0
+        self._contact_cooldown_until = time.monotonic() + 1.0
 
     # ── Behaviours ────────────────────────────────────────────────────────────
     # Mirror EthologyRobot.cpp behavior methods exactly.
-    # driveProportional(left, right, duration) — duration is blocking on hardware;
-    # in simulation the tick rate controls effective duration.
+    # driveProportional(left, right, duration) — duration is a blocking delay()
+    # on hardware. In simulation the CALL returns immediately, but ArduinoHAL's
+    # TimedAction then suppresses subsequent loop() ticks until the duration
+    # elapses (see arduino_hal.call_loop), while the servo angles written by
+    # this call stay in place. So the effective duration IS honoured, and the
+    # simulation tick rate does NOT determine it — a 0.5 s primitive commits the
+    # robot for 0.5 s of un-re-evaluated motion, exactly as on the robot.
+
+    # ── The eight behaviours ──────────────────────────────────────────────
+    #
+    # PORTED VERBATIM from firmware/shared/EthologyRobot.cpp, which is vetted
+    # on hardware — every one of the eight, including the servo/primitive
+    # durations. The simulator previously carried its own values and its own
+    # bugs, so a student saw one thing in the game and another on the robot.
+    #
+    # DO NOT re-derive any of these from wheel arithmetic. The light pair, the
+    # escapes and approachObject were each wrong in a way that looked correct
+    # on paper and were fixed from observation. If a sign looks backwards, it
+    # is probably right. Change them only alongside the firmware.
 
     def avoidObject(self) -> None:
-        """Arc away from the nearer proximity sensor."""
-        rp = self.rightProx.getData()
-        lp = self.leftProx.getData()
-        if rp <= PROX_THRESHOLD and lp <= PROX_THRESHOLD:
-            if rp <= lp:
-                self._servo.driveProportional(-40, 40, 0.3)
-            else:
-                self._servo.driveProportional(40, -40, 0.3)
-        elif rp <= PROX_THRESHOLD:
-            self._servo.driveProportional(-40, 40, 0.3)
-        elif lp <= PROX_THRESHOLD:
-            self._servo.driveProportional(40, -40, 0.3)
-        else:
-            self.cruiseStraight()
+        """Steer away from the nearer proximity sensor."""
+        if self._rightProxData <= PROX_THRESHOLD:
+            self._servo.driveProportional(-40, 40, 0.5)
+        elif self._leftProxData <= PROX_THRESHOLD:
+            self._servo.driveProportional(40, -40, 0.5)
 
     def approachObject(self) -> None:
-        """Arc toward the nearer proximity sensor."""
-        if self.rightProx.getData() >= PROX_THRESHOLD:
-            self._servo.driveProportional(40, 60, 0.1)
-        elif self.leftProx.getData() >= PROX_THRESHOLD:
-            self._servo.driveProportional(60, 40, 0.1)
+        """Steer toward the nearer proximity sensor.
 
-    def approachLight(self) -> None:
+        The guard defines NEAR as <= PROX_THRESHOLD; this used to branch on
+        >=, which tests for FAR, so the robot steered by whichever side was
+        empty and read as backing away. The both-near case is required: an
+        object dead ahead satisfies the guard while every other branch misses.
         """
-        Spin toward the brighter light sensor using cached gradient.
-        gradient = rightLight - leftLight  (positive = light is to the right)
-        With CogServo negation:
-          driveProportional(40,-40) = left FWD, right BWD = spin RIGHT
-          driveProportional(-40,40) = left BWD, right FWD = spin LEFT
-        """
-        if self._lightGradient >= LIGHT_THRESHOLD:
-            # Light on right → spin right
-            self._servo.driveProportional(40, -40, 0.3)
-        elif self._lightGradient <= -LIGHT_THRESHOLD:
-            # Light on left → spin left
-            self._servo.driveProportional(-40, 40, 0.3)
-        else:
-            self.cruiseStraight()
+        right = self._rightProxData <= PROX_THRESHOLD
+        left  = self._leftProxData  <= PROX_THRESHOLD
+
+        if right and left:
+            self._servo.driveProportional(CRUISE_SPEED, CRUISE_SPEED, 0.1)
+        elif right:
+            self._servo.driveProportional(60, 40, 0.1)   # object right → curve right
+        elif left:
+            self._servo.driveProportional(40, 60, 0.1)   # object left  → curve left
 
     def avoidLight(self) -> None:
-        """
-        Spin away from the brighter light sensor using cached gradient.
-        gradient = rightLight - leftLight  (positive = light is to the right)
-        With CogServo negation:
-          driveProportional(-40,40) = left BWD, right FWD = spin LEFT (away from right)
-          driveProportional(40,-40) = left FWD, right BWD = spin RIGHT (away from left)
+        """Turn away from the brighter side. gradient = right - left."""
+        if self._lightGradient >= LIGHT_THRESHOLD:
+            self._servo.driveProportional(40, -40, 0.1)
+        elif self._lightGradient <= -LIGHT_THRESHOLD:
+            self._servo.driveProportional(-40, 40, 0.1)
+
+    def approachLight(self) -> None:
+        """Turn toward the brighter side. gradient = right - left.
+
+        VERIFIED ON HARDWARE, and the opposite of what the arithmetic
+        suggests. Test against a lamp; do not reason it out.
         """
         if self._lightGradient >= LIGHT_THRESHOLD:
-            # Light on right → spin left (away from it)
-            self._servo.driveProportional(-40, 40, 0.3)
+            self._servo.driveProportional(-40, 40, 0.5)
         elif self._lightGradient <= -LIGHT_THRESHOLD:
-            # Light on left → spin right (away from it)
-            self._servo.driveProportional(40, -40, 0.3)
-        else:
-            self.cruiseStraight()
+            self._servo.driveProportional(40, -40, 0.5)
 
     def escapeFrontCollision(self) -> None:
-        """
-        Arc backward away from the bumped side.
+        """Spin off the bumped side; back straight out if pinned both sides.
 
-        CogServo::driveProportional negates both proportions before
-        mapping to servo angle, so the effective direction is inverted
-        from what the values suggest naively.  The commands below are
-        calibrated for the physical robot with negation applied:
-
-          driveProportional(-60,-60) -> both wheels backward (reverse)
-          driveProportional(-60,-30) -> left faster back, right slower back
-                                        -> arc backward to the RIGHT
-          driveProportional(-30,-60) -> left slower back, right faster back
-                                        -> arc backward to the LEFT
+        The two bumper tests used to be separate ifs, so a square-on hit ran
+        one spin and then the other and they cancelled — the robot sat still
+        while stuck, the worst available response.
         """
-        if self._leftFrontBumpData == 0:
-            # left side hit → arc backward to the right
-            self._servo.driveProportional(-60, -30, 0.8)
-        elif self._rightFrontBumpData == 0:
-            # right side hit → arc backward to the left
-            self._servo.driveProportional(-30, -60, 0.8)
-        else:
-            # both bumped (simulation generic contact) → arc back-right
-            self._servo.driveProportional(-60, -30, 0.8)
+        left  = self._leftFrontBumpData  == 0
+        right = self._rightFrontBumpData == 0
+
+        if left and right:
+            self._servo.driveProportional(-100, -100, ESCAPE_SECONDS)
+        elif left:
+            self._servo.driveProportional(-100, 100, ESCAPE_SECONDS)
+        elif right:
+            self._servo.driveProportional(100, -100, ESCAPE_SECONDS)
         self.clear_contact()
 
-    def escalateFrontCollision(self) -> None:
-        """Back up then ram forward."""
-        self._servo.driveProportional(-50, -50, 0.2)
-        self._servo.driveProportional(100, 100, 0.1)
+    def escapeBackCollision(self) -> None:
+        """Struck from behind: sprint forward, away from it."""
+        self._servo.driveProportional(100, 100, ESCAPE_SECONDS)
 
     def cruiseStraight(self) -> None:
-        self._servo.driveProportional(60, 60, 0.1)
+        self._servo.driveProportional(CRUISE_SPEED, CRUISE_SPEED, CRUISE_SECONDS)
+
+    def cruiseArc(self) -> None:
+        """Hold one arc direction for 0.7-1.9 s, then re-flip.
+
+        It used to flip every tick (CRUISE_SECONDS = 0.1), so successive left
+        and right arcs cancelled and the robot tracked straight with a wobble.
+        The 30/50 geometry was never the problem; the sampling rate was.
+        """
+        now = time.monotonic() * 1000.0
+        if now >= self._arcUntilMs:
+            self._arcLeft = random.random() < 0.5
+            self._arcUntilMs = now + random.uniform(ARC_HOLD_MIN_MS,
+                                                    ARC_HOLD_MAX_MS)
+        if self._arcLeft:
+            self.cruiseLeftArc()
+        else:
+            self.cruiseRightArc()
 
     def cruiseLeftArc(self) -> None:
-        self._servo.driveProportional(30, 50, 0.1)
+        self._servo.driveProportional(ARC_INNER_SPEED, ARC_OUTER_SPEED,
+                                      CRUISE_SECONDS)
 
     def cruiseRightArc(self) -> None:
-        self._servo.driveProportional(50, 30, 0.1)
+        self._servo.driveProportional(ARC_OUTER_SPEED, ARC_INNER_SPEED,
+                                      CRUISE_SECONDS)
+
+    def escapeBack(self) -> None:
+        """
+        Escape a rear collision: drive straight forward, away from the rear
+        contact, at full speed for a decisive beat. Matches the Arduino
+        EthologyRobot::escapeBack() so simulation and hardware agree. (The rear
+        sensor is not yet fitted; rear_contact_met() returns False, so this
+        never fires today — but when wired, both paths behave identically.)
+        """
+        self._servo.driveProportional(100, 100, 0.25)
 
     # Public aliases matching generated sketch method names
     def escape_front(self)   -> None: self.escapeFrontCollision()
+    def escape_back(self)    -> None: self.escapeBack()
     def avoid_object(self)   -> None: self.avoidObject()
-    def seek_light(self)     -> None: self.approachLight()
+    def approach_object(self)-> None: self.approachObject()
+    def approach_light(self)     -> None: self.approachLight()
     def avoid_light(self)    -> None: self.avoidLight()
     def cruise_straight(self)-> None: self.cruiseStraight()
     def cruise_arc(self)     -> None: self.cruiseLeftArc()
@@ -274,10 +360,14 @@ class EthologyRobot:
 
     def hierarchy(self) -> None:
         """
-        Default subsumption hierarchy: escape → avoid → seek_light → cruise.
+        Default subsumption hierarchy: escape → avoid → approach_light → cruise.
         Mirrors the target hierarchy for robots A and B.
         Generated sketches call individual methods instead of this.
         """
+        # Sense first — see readSensors(). Without it every guard below reads
+        # values last set in __init__.
+        self.readSensors()
+
         if self.collisionThreshold():
             self.escapeFrontCollision()
         elif self.proximityThreshold():
@@ -290,10 +380,11 @@ class EthologyRobot:
     # ── HUD / debug ───────────────────────────────────────────────────────────
 
     def get_state_label(self) -> str:
-        rp = self.rightProx.getData()
-        lp = self.leftProx.getData()
-        rl = self.rightLight.getData()
-        ll = self.leftLight.getData()
+        # Read the CACHE, so the label describes the tick the robot actually
+        # acted on rather than a fresh sample taken after the fact.
+        rp = self._rightProxData
+        lp = self._leftProxData
+        rl = self._lightGradient
         lf = self._leftFrontBumpData
         rf = self._rightFrontBumpData
         if lf == 0 or rf == 0:
@@ -301,8 +392,8 @@ class EthologyRobot:
             return f"ESCAPE  {side} front"
         if rp <= PROX_THRESHOLD or lp <= PROX_THRESHOLD:
             return f"AVOID  R={rp}cm L={lp}cm"
-        if abs(rl - ll) >= LIGHT_THRESHOLD:
-            return f"SEEK_LIGHT  R={rl} L={ll} Δ={rl-ll}"
+        if abs(rl) >= LIGHT_THRESHOLD:
+            return f"APPROACH_LIGHT  Δ={rl}"
         return f"CRUISE  R={rp}cm L={lp}cm"
 
     def get_hud_info(self):

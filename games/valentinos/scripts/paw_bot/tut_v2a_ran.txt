@@ -1,0 +1,3 @@
+PAW-BOT: The brighter sensor drives its own motor faster, steering the robot away from the light. Simple wiring, purposeful behaviour.
+
+PAW-BOT: Now for Vehicle 3b — the Explorer. This uses neurons as intermediaries. Open the wiring editor. Connect LDR·C1 to I2 with a blue wire — the left sensor inhibits the right neuron. Connect LDR·C2 to I1 — right sensor inhibits left neuron. Then connect N1 to FL and N2 to FR with blue wires. You will also need to set a positive bias on N1 and N2 so they fire at rest. Press Done when ready.

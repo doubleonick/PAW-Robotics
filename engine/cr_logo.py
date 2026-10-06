@@ -1,7 +1,7 @@
 """
 engine/cr_logo.py
 -------------------
-"Curious Robotics" Ci logo.
+"PAW Robotics" logo (legacy "Ci" monogram; unused).
 
 The C and i are bold, blocky letterforms whose outer edges trace the
 perimeter of a shared circle.  The C occupies roughly the left 280° of

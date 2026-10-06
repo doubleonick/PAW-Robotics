@@ -1,0 +1,39 @@
+{
+    "_description": "CP2 U-Trap \u2014 PUSH/PULL ONLY. Same asymmetric morphology: LDR Seek -45, IR Flee -90, both offset left. Emergent circulation slides the robot out of the concave pocket instead of pinning it at the back wall. ~6.5s.",
+    "chassis": "octagon",
+    "chassis_spec": {
+        "type": "octagon",
+        "bsquare_m": 0.169
+    },
+    "sensors": {
+        "LDR\u00b7F": {
+            "type": "LDR",
+            "channel": "W",
+            "x_m": 0.06,
+            "y_m": -0.04,
+            "angle_deg": -45,
+            "policy": "attract",
+            "flow": "seek"
+        },
+        "IR\u00b7F": {
+            "type": "IR",
+            "channel": "W",
+            "x_m": 0.05,
+            "y_m": -0.04,
+            "angle_deg": -90,
+            "policy": "repel",
+            "tangential": 0.0,
+            "flow": "flee"
+        }
+    },
+    "motors": {
+        "ML": {
+            "x_m": 0.0,
+            "y_m": 0.06
+        },
+        "MR": {
+            "x_m": 0.0,
+            "y_m": -0.06
+        }
+    }
+}

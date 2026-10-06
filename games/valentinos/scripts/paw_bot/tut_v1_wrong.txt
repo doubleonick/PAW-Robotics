@@ -1,0 +1,1 @@
+PAW-BOT: Not quite. For Vehicle 1, connect LDR·C1 to FL using a blue wire, then connect LDR·C1 to FR using another blue wire. One sensor, both motors. Try again.

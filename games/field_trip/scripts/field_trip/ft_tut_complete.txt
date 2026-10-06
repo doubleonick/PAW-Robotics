@@ -1,0 +1,5 @@
+PAW-BOT: Excellent! You have learned to attract and repel using light and walls!
+
+PAW-BOT: Now things get more interesting. From here, each arena will have more than one source. You will need to decide which to attract, which to repel, and which to ignore.
+
+PAW-BOT: May the Virtual Force be with you!

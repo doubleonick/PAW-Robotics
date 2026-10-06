@@ -1,0 +1,45 @@
+# PAW-Bot circuit-board tour — narration script
+# ------------------------------------------------------------------
+# One step per blank-line-separated block. The FIRST line of each block is a
+# region KEY (which group of components glows for that step); the remaining
+# lines are PAW-Bot's narration for that step. Keys must match the tour's
+# region map in wiring_editor.py:
+#     sensors | meters | motors | neurons | excitatory | inhibitory | pots
+#
+# This is PLACEHOLDER text — replace the narration lines with the real
+# explanations. Keep each step to ~2-3 short lines so it fits the strip.
+# ------------------------------------------------------------------
+
+sensors
+These are the SENSOR pins. They bring the outside world into the circuit
+board — light levels, distances — as electrical signals to work with.
+
+motors
+These are the MOTOR pins. Whatever signals you route here drive the wheels.
+This is where the circuit's decisions become action.
+
+neurons
+Each triangle is a NEURON. It gathers the signals wired into it, combines
+them, and produces one output. A neuron changes the "perception" of the
+world, which in turn affects the action the connected motors will take.
+
+excitatory
+The GREEN (E) inputs are EXCITATORY: signal in pushes the neuron's output
+UP. Electrically, they add current that drives the output higher.
+
+inhibitory
+The RED (I) inputs are INHIBITORY: signal in pushes the output DOWN.
+Electrically, they pull current away, lowering the output.
+
+pots
+The knob inside each triangle is a POTENTIOMETER — the neuron's bias.
+Negative bias makes excitatory inputs less effective. 
+Positive bias makes inhibitory inputs less effective.  
+
+outputs
+There are two types of outputs: "N" and "T".  N is a normal output: "fire" 
+immediately.  "T" is a threshold output; it tells the neuron, don't 
+fire unless the sum of the inputs is positive.  It delays action.
+
+replay
+Feel free to press, "Play Tour" to review at any time.

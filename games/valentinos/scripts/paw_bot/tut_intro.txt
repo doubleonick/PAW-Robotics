@@ -1,0 +1,5 @@
+PAW-BOT: Welcome to the Wiring Tutorial. You will wire three vehicles from scratch — the same ones you just saw in the introduction.
+
+PAW-BOT: We will start with Vehicle 1 — Target Avoidance. It uses a single light sensor (LDR·C1) wired to both motors (FL and FR).
+
+PAW-BOT: Press "Open Wiring Editor" to begin. Inside the editor, click LDR·C1 — the left light sensor — then click FL. That draws your first wire. Then click LDR·C1 again and connect it to FR. Press Done when both wires are in place.

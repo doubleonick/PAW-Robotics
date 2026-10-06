@@ -5,9 +5,10 @@
     "light_sources": [
         {
             "x": 0.0,
-            "y": 0.20,
+            "y": 0.50,
             "intensity": 1.0,
-            "radius": 0.4
+            "radius": 0.35
         }
-    ]
+    ],
+    "robot_start": {"x": 0.0, "y": -0.60, "heading_deg": 90.0}
 }

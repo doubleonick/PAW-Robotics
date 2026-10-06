@@ -1,0 +1,9 @@
+PAW-BOT: Welcome to Robot Ethology!
+
+PAW-BOT: You are about to observe two robots — A and B — for three minutes. Watch carefully. You will need to figure out what rules govern their behavior.
+
+PAW-BOT: No hints about sensors, behaviors, or logic. Just watch, hypothesize, and test. You have 20 experiments.
+
+PAW-BOT: Like any good ethologist, you may inspect each specimen up close — use Inspect A or Inspect B to study how a robot is built. What you notice there may matter more than you think.
+
+PAW-BOT: Press Continue when you are ready. Good luck!

@@ -1,0 +1,24 @@
+{
+  "_description": "Hardware profile definitions for PAW robot sketches.",
+  "_note": "Each profile defines the board, shield, servo init style, and pin namespace. Referenced by robot description files and used by codegen to produce correct sketch templates.",
+  "profiles": {
+    "uno_r4_wifi__prototype": {
+      "label": "Uno R4 WiFi \u2014 Prototype (bare Arduino)",
+      "board": "uno_r4_wifi",
+      "shield": "prototype",
+      "servo_init": "servo_h",
+      "_servo_note": "Uses Servo.h \u2014 attach() with Arduino GPIO pin numbers",
+      "pin_namespace": "gpio",
+      "_pin_note": "Pin integers are Arduino GPIO numbers (D5=5, D6=6, A0=14, etc.)",
+      "sketch_includes": [
+        "<Servo.h>"
+      ],
+      "sketch_servo_decl": "",
+      "sketch_servo_begin": "",
+      "sketch_bot_decl": "{robot_class} bot(driveServos);",
+      "sketch_bot_begin": "bot.begin({left_pin}, {right_pin});",
+      "sketch_robot_decl": "EthologyRobot bot;"
+    }
+  },
+  "default": "uno_r4_wifi__prototype"
+}

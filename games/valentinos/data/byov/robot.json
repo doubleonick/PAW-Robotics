@@ -1,0 +1,28 @@
+{
+    "chassis": "triangle",
+    "chassis_spec": {
+        "label": "Triangle  (equilateral, inscribed)",
+        "type": "triangle",
+        "circum_r_m": 0.10960155108391487
+    },
+    "sensors": {
+        "IR·C": {
+            "type": "IR",
+            "channel": "W",
+            "x_m": 0.048,
+            "y_m": -0.0,
+            "angle_deg": 0.0,
+            "policy": "attract"
+        }
+    },
+    "motors": {
+        "ML": {
+            "x_m": 0.0548,
+            "y_m": -0.0949
+        },
+        "MR": {
+            "x_m": 0.0548,
+            "y_m": 0.0949
+        }
+    }
+}

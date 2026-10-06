@@ -1,1 +1,0 @@
-PAW-BOT: Check your wiring. The motor wires from the previous step should be gone. Then connect PL to FL, and PR to FR. These are the light sensors — top-left and top-right of the board.

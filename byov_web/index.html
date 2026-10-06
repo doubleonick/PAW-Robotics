@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Build Your Own Vehicle</title>
+  <link rel="stylesheet" href="style.css?v=7">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Build Your Own Vehicle</h1>
+      <p class="sub">A digital twin of the physical PAW lab robot.</p>
+    </div>
+    <nav class="mode-toggle">
+      <button id="tab-build" class="active">Build robot</button>
+      <button id="tab-run">Arena &amp; run</button>
+    </nav>
+  </header>
+
+  <!-- ── SCREEN 1: Build robot (rectangular body + wiring overlay) ── -->
+  <main id="screen-build" class="screen">
+    <canvas id="editor" width="600" height="660"></canvas>
+    <aside class="side">
+      <h3>Presets</h3>
+      <div class="presets" id="presets"></div>
+      <h3>How to wire</h3>
+      <ul class="hints">
+        <li>Drag a sensor straight to a motor's <b style="color:#7fb069">FWD</b> or <b style="color:#c98b5e">REV</b> bank (4 sockets each). Neurons have <b style="color:#3fb950">E</b>/<b style="color:#f85149">I</b> inputs; motors have direction.</li>
+        <li>Wire colour = weight: <b style="color:#4d8cff">blue 1x</b>, <b style="color:#3fb950">green 2x</b>, <b style="color:#f85149">red 3x</b>. Left-click cycles, right-click removes.</li>
+        <li>Meters <b>M1–M3</b>: one wire each, display only. Pot between motors = resting speed.</li>
+        <li><b>+</b> / <b>−</b> beside the robot add/remove neurons (max 6, last-in-first-out).</li>
+        <li>Double-click a sensor to change type (LDR → IR → none).</li>
+        <li><b>Single-click LDR</b> to cycle color channels: <b style="color:#dc3c3c">R</b>, <b style="color:#3cc83c">G</b>, <b style="color:#508cff">B</b>, <b style="color:#ffc83c">W</b> (any color ambient)</li>
+      </ul>
+</aside>
+  </main>
+
+  <!-- ── SCREEN 2: Arena & run ── -->
+  <main id="screen-run" class="screen hidden">
+    <canvas id="arena" width="560" height="720"></canvas>
+    <aside class="side">
+      <h3>Run</h3>
+      <div class="row">
+        <button id="btn-run" class="primary">▶ Run</button>
+        <button id="btn-reset">↺ Reset</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="chk-cones" checked> Show sensor cones</label>
+
+      <h3>Edit arena</h3>
+      <div class="tool-group" id="arena-tools">
+        <button data-tool="light" class="tool active">Place light</button>
+        <button data-tool="erase-light" class="tool">Erase light</button>
+        <button data-tool="wall" class="tool">Add wall</button>
+        <button data-tool="erase" class="tool">Erase wall</button>
+        <button data-tool="robot" class="tool">Place robot</button>
+      </div>
+      <div class="color-row" id="light-color-row">
+        <span class="hint">Light colour:</span>
+        <div class="color-swatches" id="light-colors">
+          <button data-color="white" class="sw sw-white active" title="white"></button>
+          <button data-color="red" class="sw sw-red" title="red"></button>
+          <button data-color="green" class="sw sw-green" title="green"></button>
+          <button data-color="blue" class="sw sw-blue" title="blue"></button>
+        </div>
+      </div>
+      <div class="row">
+        <button id="btn-clear-lights">Clear lights</button>
+        <button id="btn-clear-walls">Clear walls</button>
+      </div>
+      <p class="hint" id="tool-hint">Click the arena to place a light.</p>
+
+      <h3>Record</h3>
+      <div class="row">
+        <button id="btn-record">● Record</button>
+        <button id="btn-export" disabled>⬇ Export</button>
+        <button id="btn-import">⬆ Import</button>
+      </div>
+      <input type="file" id="file-import" accept="application/json,.json" style="display:none">
+      <span id="rec-status" class="hint"></span>
+
+      <!-- Replay controls (shown only in replay mode) -->
+      <div id="replay-panel" class="hidden">
+        <h3>Replay</h3>
+        <p class="hint" id="replay-name"></p>
+        <div class="row">
+          <button id="btn-replay-play" class="primary">▶ Play</button>
+          <button id="btn-replay-exit">✕ Exit replay</button>
+        </div>
+        <input type="range" id="replay-scrub" min="0" max="100" value="0" style="width:100%">
+        <span class="hint" id="replay-frame"></span>
+      </div>
+    </aside>
+  </main>
+
+  <footer><span>PAW Robotics · BYOV web</span></footer>
+  <script type="module" src="app.js?v=7"></script>
+</body>
+</html>

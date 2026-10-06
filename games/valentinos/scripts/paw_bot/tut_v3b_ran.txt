@@ -1,0 +1,5 @@
+PAW-BOT: The Explorer moves away from whatever it senses, as though curious about other parts of the environment. The inhibitory connections mean the stronger the sensor reading, the slower that side's motor — so the robot turns away and explores elsewhere.
+
+PAW-BOT: Congratulations — you have wired all three vehicles! You are now ready to Build Your Own Vehicle and explore further in Name That Vehicle.
+
+PAW-BOT: This tutorial will always be available from the Valentino's Vehicles menu.

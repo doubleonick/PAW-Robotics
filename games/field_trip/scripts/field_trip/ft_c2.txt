@@ -1,0 +1,10 @@
+@intro
+PAW-BOT: In the last challenge, you made a robot that could Seek a light like a magnet being drawn to metal.  Now, your challenge is to keep the robot away from the light like it and the light are magnets of the same polarity.  There are multiple solutions you could find, but sometimes the most direct way to avoid something is to run away.
+@build_hint
+PAW-BOT: To quote the Wicked Witch of the West, "Fly my pretties, fly!"
+@on_run
+PAW-BOT: Don't follow the light!
+@success
+PAW-BOT: Congratulations!  Your design included an LDR sensor set to <Flee>(3) a light source.  At any rate, you avoided it.
+@retry
+PAW-BOT: You could hang around the light instead of Seeking it.  You could even flow around it like water in a river flowing around a rock.  But there is an easier way.

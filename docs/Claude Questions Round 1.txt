@@ -1,0 +1,55 @@
+Scope & Target Audience
+
+The primary audience would be a general audience.
+
+The target age should be about 8 years old and up.
+
+A standalone experience should be sufficient, but some games will allow for working with a physical kit.  For example, the Robot Ethology game should allow for simulated or physical robots to be used on any one of the 20 potential experiments.  There should be a button for launching the simulation of the hypothesized hierarchy, as well as a button to connect by WiFi to a physical robot and send it the hypothesized hierarchy to be embedded in a struct that holds the hierarchy itself, and then uses a function to execute the hierarchy in a loop.
+
+
+Technical Environment
+
+Development is for Python 3.12 (the development machine also has 3.14 installed, and so "py -3.12" must be used when running any python sketches.  This is intended to be a desktop game, but what would it take to also be compatible with RPi or a tablet in the future?  If those are possible options later, would it be better to address that from the start?
+
+Same machine same keyboard for anything multi-player.
+
+
+Architecture & Existing Code
+
+Robot Ethology is largely complete.  Valentino's Vehicles has a great deal of implementation done, and much of the inter-game common features are done.  Placeholders exist for some, but not all of the remaining games and functionality.  It is a fairly extensive base.  Another fun, but not critical aspect of the game is that the landing window has a few theme options: Phosphor, LCARS, Blueprint, and 16-bit.  If only ONE of these were to be used, I would go with 16-bit.
+
+Current code is quite modular.
+
+Some of the functionality of Vehicles needs work.  Some of the more intricate parts of Robot Ethology (e.g. WiFi connection and transmission of code using an Arduino) are untested, except using virtual servers and clients, however the overall implementation of that game end-to-end is great and could mostly, if not entirely be kept.
+
+
+The PAW-Bot Narrative Layer
+
+PAW-Bot should ultimately have a static icon (along with any other characters), but can start as text only.
+
+These should be persistent for release, but not necessarily for development.
+
+I am unclear of the distinction you are making in this question.
+
+
+Robot Builder / Programmer
+
+At this time, the player will not write free-text code.  This will be GUI assisted, potentially involving Scratch like block coding.
+
+The library will have fixed options, like buying off-the-shelf parts and kitting them together.
+
+The styling should be the same across all games (look-and-feel, controls placement, etc.).  A different selection of parts may be available depending on the game (and depending on what is unlocked).  If that qualifies as a different variant, then that is what it should be.  If it is just a different set of parameters for a common builder, that is fine too.
+
+
+Physics & Simulation Fidelity
+
+The goal is to have as small a reality gap as possible.  Simpler abstractions may be acceptable to begin with, but ultimately, the physical interactions should be high fidelity.  Sensors should be based on particular sensor models and their specifications, not just generic/hypothetical versions of a given sensor type.
+
+The vehicles, like all robots and environments, should be governed by PyBullet on the backend, and PyGame on the front end.
+
+
+The Arena
+
+The arena should scale according to screen size such that, if a future arena were to be made with different physical dimensions, it would render in proportion to the 1m x 2m.  The largest possible arena would be 4m x 4m.
+
+Arenas may be saved and reloaded between sessions.  Some arenas, however, should be fixed.

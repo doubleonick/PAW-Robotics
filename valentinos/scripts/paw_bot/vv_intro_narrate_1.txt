@@ -1,9 +1,0 @@
-PAW-BOT: The next level of vehicle is like connecting two V1 vehicles side by side: there is a sensor on the left connected to a left-side motor, and a sensor on the right connected to a right-side motor. This is called an ipsilateral connection, meaning "same side". Both connections are positive, meaning the stronger the reading from a sensor, the faster its motor will spin. (Both sensors still detect light in this example.)
-
-PAW-BOT: Before you run it, take a moment to predict: will the robot cower away from the light, or steer aggressively to it?
-
-PAW-BOT: Press "Continue" and see if your prediction was right.
-
-PAW-BOT: Vehicle 2a is referred to as a "Coward"; it arcs quickly away from whatever its sensors respond to as though afraid of those parts of the environment.
-
-PAW-BOT: Press "Continue" when you are ready to move on.

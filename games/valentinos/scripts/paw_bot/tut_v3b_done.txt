@@ -1,0 +1,1 @@
+PAW-BOT: You have wired Vehicle 3b — the Explorer. Press Run and observe how it behaves with inhibitory connections.

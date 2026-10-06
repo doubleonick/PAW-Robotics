@@ -30,6 +30,23 @@ import sys
 GAME_DIR   = os.path.dirname(os.path.abspath(__file__))
 EXPORT_DIR = os.path.join(GAME_DIR, "arduino_exports")
 
+# Source directory for the REAL, vetted Arduino class files (CogServo,
+# EthologyRobot, etc.). The generator copies these into each sketch folder so
+# the exported sketch ships with the verified hardware library — not stubs.
+# Defaults to the project's materials/arduino_classes/; the packaging layer
+# (frozen .exe) overrides this to the bundled resource location. Because the
+# files are copied as plain files, they can be edited/improved in the field
+# without touching the generator, as long as the called interface is preserved.
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(GAME_DIR))
+
+
+def _default_classes_dir() -> str:
+    return os.path.join(_PROJECT_ROOT, "materials", "arduino_classes")
+
+
+# Reassignable by a host (e.g. the frozen app points this at _internal/materials).
+arduino_classes_provider = _default_classes_dir
+
 # ── Stub headers ──────────────────────────────────────────────────────────────
 
 _COGS_SERVO_H = """\
@@ -55,7 +72,7 @@ public:
 _ETHOLOGY_ROBOT_H = """\
 // EthologyRobot.h — STUB
 // Replace with the real EthologyRobot library files when deploying to physical hardware.
-// Provides: escape_front(), escape_rear(), avoid_object(), approach_object(),
+// Provides: escape_front(), escape_back(), avoid_object(), approach_object(),
 //           cruise_straight(), cruise_arc(), begin()
 //           front_contact_met(), rear_contact_met(), proximity_threshold_met(),
 //           light_gradient_met() [always returns false in this class]
@@ -70,10 +87,10 @@ public:
   bool proximity_threshold_met() { return false; }
   bool light_gradient_met()      { return false; }
   void escape_front()    {}
-  void escape_rear()     {}
+  void escape_back()     {}
   void avoid_object()    {}
   void approach_object() {}
-  void seek_light()      {}
+  void approach_light()      {}
   void avoid_light()     {}
   void cruise_straight() {}
   void cruise_arc()      {}
@@ -85,7 +102,7 @@ _LDR_ETHOLOGY_ROBOT_H = """\
 // Replace with the real LDREthologyRobot library files when deploying to physical hardware.
 // Extends EthologyRobot with light sensor support:
 //   light_gradient_met() returns true when LDR differential >= threshold
-//   seek_light() / avoid_light() arc toward/away from brighter side
+//   approach_light() / avoid_light() arc toward/away from brighter side
 #pragma once
 #include "CogServo.h"
 class LDREthologyRobot {
@@ -97,10 +114,10 @@ public:
   bool proximity_threshold_met() { return false; }
   bool light_gradient_met()      { return false; }
   void escape_front()    {}
-  void escape_rear()     {}
+  void escape_back()     {}
   void avoid_object()    {}
   void approach_object() {}
-  void seek_light()      {}
+  void approach_light()      {}
   void avoid_light()     {}
   void cruise_straight() {}
   void cruise_arc()      {}
@@ -110,7 +127,9 @@ public:
 STUBS = {
     "CogServo.h":         _COGS_SERVO_H,
     "EthologyRobot.h":    _ETHOLOGY_ROBOT_H,
-    "LDREthologyRobot.h": _LDR_ETHOLOGY_ROBOT_H,
+    # LDREthologyRobot.h is intentionally NOT emitted: the codegen supersedes it
+    # (EthologyRobot now handles all sensors, light included), so the generated
+    # sketch never #includes it. Emitting it just produced a dead, unused tab.
 }
 
 
@@ -123,7 +142,30 @@ def _is_stub(path: str) -> bool:
 
 
 def _ensure_headers(folder: str) -> None:
-    """Write stub headers into folder, preserving any real ones already there."""
+    """Copy the REAL, vetted Arduino class files into the sketch folder so the
+    exported sketch ships with the verified hardware library — not stubs.
+
+    Source is arduino_classes_provider() (the bundled materials/arduino_classes
+    in a packaged build, or the project tree in dev). Files are copied only when
+    missing or unchanged, so a real file the user has edited in the sketch
+    folder is preserved. If the real classes can't be found (older layout), we
+    fall back to writing the built-in stubs so the sketch still compiles."""
+    import shutil
+    src_dir = arduino_classes_provider()
+    if os.path.isdir(src_dir):
+        for fname in os.listdir(src_dir):
+            if not (fname.endswith(".h") or fname.endswith(".cpp")):
+                continue
+            src = os.path.join(src_dir, fname)
+            dst = os.path.join(folder, fname)
+            try:
+                # copy if missing; otherwise leave user-edited copies alone
+                if not os.path.exists(dst):
+                    shutil.copyfile(src, dst)
+            except OSError:
+                pass
+        return
+    # Fallback: no real classes available — write the built-in stubs.
     for fname, content in STUBS.items():
         path = os.path.join(folder, fname)
         if not os.path.exists(path) or _is_stub(path):

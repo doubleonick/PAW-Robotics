@@ -1,0 +1,133 @@
+{
+    "_description": "Ethology Robot V2 \u2014 octagonal LEGO/Technic chassis",
+    "_units": "mm for dimensions and positions, degrees for angles",
+    "_origin": "axle midpoint (drive axle centred front-to-back)",
+    "_axes": "x = right, y = forward, angle_deg: 0=forward, +left, -right",
+    "name": "EthologyBot V2",
+    "version": "2",
+    "chassis": {
+        "shape": "octagon",
+        "bounding_square_mm": 155,
+        "corner_cut_mm": 45.4,
+        "flat_side_mm": 64.2,
+        "vertices_mm": [
+            [
+                -32.1,
+                77.5
+            ],
+            [
+                32.1,
+                77.5
+            ],
+            [
+                77.5,
+                32.1
+            ],
+            [
+                77.5,
+                -32.1
+            ],
+            [
+                32.1,
+                -77.5
+            ],
+            [
+                -32.1,
+                -77.5
+            ],
+            [
+                -77.5,
+                -32.1
+            ],
+            [
+                -77.5,
+                32.1
+            ]
+        ],
+        "_vertex_note": "ordered clockwise from front-left, origin=axle centre"
+    },
+    "drivetrain": {
+        "type": "differential",
+        "wheel_track_mm": 80,
+        "wheel_radius_mm": 24,
+        "axle_from_front_mm": 77.5,
+        "axle_from_rear_mm": 77.5,
+        "left_wheel_x_mm": -40,
+        "right_wheel_x_mm": 40,
+        "axle_y_mm": 0,
+        "caster": {
+            "type": "skid",
+            "description": "Technic double-bend beam, 3-peg section on surface",
+            "position_y_mm": 55
+        },
+        "servo_pins": {
+            "left": "D6",
+            "right": "D5"
+        }
+    },
+    "sensors": [
+        {
+            "id": "leftProx",
+            "label": "Left IR proximity",
+            "type": "ir",
+            "pin": "A0",
+            "mount_x_mm": -54.8,
+            "mount_y_mm": 54.8,
+            "angle_deg": 45,
+            "_note": "centred on front-left diagonal edge, flush with surface"
+        },
+        {
+            "id": "rightProx",
+            "label": "Right IR proximity",
+            "type": "ir",
+            "pin": "A1",
+            "mount_x_mm": 54.8,
+            "mount_y_mm": 54.8,
+            "angle_deg": -45,
+            "_note": "centred on front-right diagonal edge, flush with surface"
+        },
+        {
+            "id": "leftLight",
+            "label": "Left LDR",
+            "type": "light",
+            "pin": "A2",
+            "mount_x_mm": -54.8,
+            "mount_y_mm": 54.8,
+            "angle_deg": 45,
+            "_note": "same forward position as leftProx, slight lateral protrusion"
+        },
+        {
+            "id": "rightLight",
+            "label": "Right LDR",
+            "type": "light",
+            "pin": "A3",
+            "mount_x_mm": 54.8,
+            "mount_y_mm": 54.8,
+            "angle_deg": -45,
+            "_note": "same forward position as rightProx, slight lateral protrusion"
+        },
+        {
+            "id": "frontBump",
+            "label": "Front bumper",
+            "type": "contact",
+            "pin": "D2",
+            "mount_x_mm": 0,
+            "mount_y_mm": 87.5,
+            "angle_deg": 0,
+            "_note": "single bumper on centreline, 10mm proud of front edge; both leftFrontBump and rightFrontBump wired to pin 2"
+        }
+    ],
+    "calibration": {
+        "_note": "Values below are defaults; run tools/calibration to obtain measured values",
+        "ir_raw_min": 120,
+        "ir_raw_max": 720,
+        "ir_dist_near_cm": 18,
+        "ir_dist_far_cm": 60,
+        "prox_threshold_cm": 15,
+        "light_scale": 50,
+        "light_threshold_gradient": 10,
+        "wheel_speed_at_prop60_mm_per_s": null
+    },
+    "hardware_profile": "uno_r4_wifi__prototype",
+    "_hardware_note": "Profile key into robots/hardware_profiles.json"
+}

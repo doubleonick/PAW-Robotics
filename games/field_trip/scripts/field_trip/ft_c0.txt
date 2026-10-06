@@ -1,0 +1,4 @@
+@intro
+PAW-BOT: Welcome to Field Trip.  Here, you will be designing robots that attempt to solve challenges by reacting to things in the environment as <virtual fields>(1).  The environments you see across these challenges will have no information about these fields.  You have the power to say how the sensors you place influence your robot's movement.  Will it *Seek*(2) a source, *Flee*(3) from it?  Will your robot *Orbit*(4) a source, or *Flow-around*(5) it?
+
+PAW-BOT: Let's explore what this all means with your first challenge.

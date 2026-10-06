@@ -1,0 +1,5 @@
+PAW-BOT: Welcome to Name That Vehicle!
+
+PAW-BOT: A vehicle will run in an arena. Watch how it behaves, then identify what it is using the two columns: one for light-sensing behaviours (LDR), one for obstacle-sensing behaviours (IR). If a sensor type is not involved, select N/A for that column.
+
+PAW-BOT: Some vehicles are subtle. Watch carefully before guessing. You have three attempts per round.

@@ -1,0 +1,10 @@
+@intro
+PAW-BOT:  You have made robots that act like magnets reacting to metal, or a magnet of the same polarity.  Now for a challenge that is more like getting your robot to act like it is responding to a different force.  Follow the perimeter of the light for 8 seconds.
+@build_hint
+PAW-BOT: Your robot shouldn't achieve escape velocity for the light.
+@on_run
+PAW-BOT: This challenge makes me feel a bit loopy.
+@success
+PAW-BOT: Congratulations on reaching a successful <Orbit>(4).  Round, and round, and round you go!
+@retry
+PAW-BOT: I hope you can appreciate the gravity of this challenge.

@@ -1,7 +1,0 @@
-PAW-BOT: Excellent! Run the robot and watch it respond to the light source in the arena.
-
-PAW-BOT: When the light is stronger on the left, the left motor speeds up and the robot steers away. It accelerates in the direction that reduces the light on both sensors — it flees.
-
-PAW-BOT: Congratulations! You now have the basics of wiring and rewiring a Vehicle. You are ready to Build Your Own Vehicle, or put your knowledge to the test in Name That Vehicle!
-
-PAW-BOT: Further tutorials will be available as you proceed through Build Your Own Vehicle. This tutorial will always be available from the Valentino's Vehicles menu.

@@ -1,0 +1,196 @@
+{
+  "geometry": "octagon",
+  "bounding_square": 0.155,
+  "vertices_m": [
+    [
+      -0.0321,
+      0.0775
+    ],
+    [
+      0.0321,
+      0.0775
+    ],
+    [
+      0.0775,
+      0.0321
+    ],
+    [
+      0.0775,
+      -0.0321
+    ],
+    [
+      0.0321,
+      -0.0775
+    ],
+    [
+      -0.0321,
+      -0.0775
+    ],
+    [
+      -0.0775,
+      -0.0321
+    ],
+    [
+      -0.0775,
+      0.0321
+    ]
+  ],
+  "radius": 0.0775,
+  "body_radius": 0.0775,
+  "wheel_base": 0.08,
+  "wheel_radius": 0.024,
+  "total_mass_kg": 0.8,
+  "motor": {
+    "left_pin": "D6",
+    "right_pin": "D5"
+  },
+  "hardware_profile": "uno_r4_wifi__prototype",
+  "sensors": {
+    "leftProx": {
+      "type": "ir",
+      "mount": [
+        -0.0421,
+        0.0675
+      ],
+      "angle": -45,
+      "pin": "A0",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "noise_stddev": 3.0,
+      "hud_color": [
+        80,
+        220,
+        120
+      ],
+      "hud_alpha": 180
+    },
+    "rightProx": {
+      "type": "ir",
+      "mount": [
+        0.0421,
+        0.0675
+      ],
+      "angle": 45,
+      "pin": "A1",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "noise_stddev": 3.0,
+      "hud_color": [
+        80,
+        220,
+        220
+      ],
+      "hud_alpha": 180
+    },
+    "leftLight": {
+      "type": "light",
+      "mount": [
+        -0.0661,
+        0.0435
+      ],
+      "angle": -70,
+      "pin": "A2",
+      "range": [
+        0,
+        1023
+      ],
+      "noise_stddev": 2.0,
+      "hud_color": [
+        255,
+        200,
+        80
+      ],
+      "hud_alpha": 140
+    },
+    "rightLight": {
+      "type": "light",
+      "mount": [
+        0.0661,
+        0.0435
+      ],
+      "angle": 70,
+      "pin": "A3",
+      "range": [
+        0,
+        1023
+      ],
+      "noise_stddev": 2.0,
+      "hud_color": [
+        255,
+        160,
+        40
+      ],
+      "hud_alpha": 140
+    },
+    "leftFrontBump": {
+      "type": "contact",
+      "mount": [
+        -0.020099999999999996,
+        0.0875
+      ],
+      "angle": 0,
+      "pin": "D2",
+      "range": [
+        0,
+        1
+      ],
+      "hud_color": [
+        255,
+        80,
+        80
+      ],
+      "hud_alpha": 180
+    },
+    "rightFrontBump": {
+      "type": "contact",
+      "mount": [
+        0.020099999999999996,
+        0.0875
+      ],
+      "angle": 0,
+      "pin": "D2",
+      "range": [
+        0,
+        1
+      ],
+      "hud_color": [
+        255,
+        80,
+        80
+      ],
+      "hud_alpha": 180
+    },
+    "leftRearBump": {
+      "type": "contact",
+      "mount": [
+        -0.020099999999999996,
+        -0.0875
+      ],
+      "angle": 180,
+      "pin": "D3",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    "rightRearBump": {
+      "type": "contact",
+      "mount": [
+        0.020099999999999996,
+        -0.0875
+      ],
+      "angle": 180,
+      "pin": "D3",
+      "range": [
+        0.0,
+        1.0
+      ]
+    }
+  },
+  "_source": "robots/ethology_v2.json",
+  "_morphology_name": "Wide-Set Splayed"
+}

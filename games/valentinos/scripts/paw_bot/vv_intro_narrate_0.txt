@@ -1,0 +1,7 @@
+PAW-BOT: This is an approximate representation of Vehicle 1. The actual implementation involved a single sensor wired to a single motor. The motor spins at speeds in proportion to the intensity of whatever the sensor is responding to.
+
+PAW-BOT: If the robot is detecting light, for example, it will move faster in response to higher light intensity, and slower in response to lower light intensity. It will look like it "dislikes" light, and "likes" dark.
+
+PAW-BOT: To approximate this, the example shows a single light dependent resistor (LDR) connected to two motors.
+
+Press "Continue" when you are ready to move on.

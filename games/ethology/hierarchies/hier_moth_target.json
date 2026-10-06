@@ -1,0 +1,10 @@
+{
+  "_hierarchy_name": "Roach Target",
+  "_description": "A dark-seeking, skittish creature: flees front collisions, avoids open objects, retreats from light, and otherwise scuttles straight. Pairs as the 'Dark' contrast against the light-seeking moth in the 'Light and Dark' bundle.",
+  "behaviors": [
+    "escape_front",
+    "avoid_object",
+    "avoid_light",
+    "cruise_straight"
+  ]
+}

@@ -8,7 +8,7 @@ It is written for someone comfortable with Python but new to this project.
 ## Project structure
 
 ```
-robosim/
+engine/
 ├── main.py                        # Entry point — run this to start the sim
 ├── arena.json                     # Arena layout (size, walls, light sources)
 ├── robot.json                     # Robot geometry, sensors, motor pins
@@ -18,7 +18,7 @@ robosim/
 │   ├── demo_sequence.ino          # Timed spin/drive sequence
 │   ├── ir_tune.ino                # IR sensor approach demo
 │   └── ethology_v2.ino            # Original behaviour hierarchy sketch
-└── robosim/                       # The simulation package
+└── engine/                       # The simulation package
     ├── config.py                  # Config dataclasses (ArenaConfig, RobotConfig)
     ├── simulation.py              # Main loop: physics + render + HAL
     ├── hal/                       # Arduino Hardware Abstraction Layer
@@ -248,11 +248,11 @@ behaviour without freezing the simulation.
 
 If you want a new behaviour (e.g. a wall-follower), the cleanest approach is:
 
-1. Create `robosim/hal/my_robot.py` — copy `demo_robot.py` as a template
+1. Create `engine/hal/my_robot.py` — copy `demo_robot.py` as a template
 2. Implement `begin()`, `runSequence()`, and `get_state_label()`
 3. Register it in `sketch_bridge.py` inside `SketchBridge.install()`:
    ```python
-   from robosim.hal.my_robot import MyRobot
+   from engine.hal.my_robot import MyRobot
    # add to the return dict:
    "MyRobot": MyRobot,
    ```
@@ -266,7 +266,7 @@ If you want a new behaviour (e.g. a wall-follower), the cleanest approach is:
 
 ## Physics tuning
 
-Physics parameters are in `robosim/robot/robot_model.py` inside `DifferentialDrive`:
+Physics parameters are in `engine/robot/robot_model.py` inside `DifferentialDrive`:
 
 | Parameter | Default | Effect |
 |---|---|---|
@@ -275,7 +275,7 @@ Physics parameters are in `robosim/robot/robot_model.py` inside `DifferentialDri
 | `VELOCITY_GAIN` | 25.0 | How aggressively the motor chases target speed |
 | `ANGULAR_GAIN` | 0.6 | How aggressively the robot corrects heading |
 
-And in `robosim/robot/robot_model.py` inside `create_body()`:
+And in `engine/robot/robot_model.py` inside `create_body()`:
 
 | Parameter | Default | Effect |
 |---|---|---|
@@ -285,13 +285,13 @@ And in `robosim/robot/robot_model.py` inside `create_body()`:
 | `linearDamping` | 0.5 | Air/floor drag on linear motion |
 | `angularDamping` | 0.8 | Drag on rotation |
 
-Wall friction is in `robosim/arena/arena_model.py` inside `_make_static_box()`.
+Wall friction is in `engine/arena/arena_model.py` inside `_make_static_box()`.
 
 ---
 
 ## Sensor tuning
 
-IR sensor parameters are in `robosim/sensors/sensor_models.py` inside `IRSensor`:
+IR sensor parameters are in `engine/sensors/sensor_models.py` inside `IRSensor`:
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -307,15 +307,15 @@ Per-sensor noise is set in `robot.json` under `noise_stddev`.
 
 ## Display and frame rate
 
-Display settings are in `robosim/renderer/pygame_renderer.py` at the top of
+Display settings are in `engine/renderer/pygame_renderer.py` at the top of
 `PyGameRenderer.__init__()`. Key values:
 
 | Setting | Location | Description |
 |---|---|---|
 | `screen_w`, `screen_h` | `__init__` | Window size in pixels |
 | `hud_panel_w` | `__init__` | Left sidebar width in pixels |
-| Render rate | `robosim/simulation.py` | `RENDER_DT = 1.0 / 30.0` (30 Hz) |
-| Physics rate | `robosim/simulation.py` | `PHYSICS_DT = 1.0 / 120.0` (120 Hz) |
+| Render rate | `engine/simulation.py` | `RENDER_DT = 1.0 / 30.0` (30 Hz) |
+| Physics rate | `engine/simulation.py` | `PHYSICS_DT = 1.0 / 120.0` (120 Hz) |
 | Font sizes | `init()` | `SysFont("consolas", 20)` etc. |
 
 To change window size: edit `screen_w` and `screen_h` in `__init__`.
@@ -356,3 +356,63 @@ To change frame rate: edit `RENDER_DT` in `simulation.py`.
 py -3.12 main.py --hud              # show sensor HUD overlays (hidden by default)
 py -3.12 main.py --scale 300        # override pixels-per-metre (auto if omitted)
 py -3.12 main.py --hud --ir-only    # IR-only HUD panel with ray visualisation` |
+
+---
+
+## Dependencies (dev14 onward)
+
+**PyBullet is now required.** All three games collide through
+`engine/adapters/pybullet_drive.PyBulletAdapter`.
+
+```
+pip install pybullet --break-system-packages
+```
+
+It is **source-only** — no prebuilt wheel exists on PyPI for any platform — and
+takes roughly 13 minutes to compile on a single core. Build a wheel once and keep
+it:
+
+```
+pip wheel pybullet --no-deps -w ./wheels
+pip install ./wheels/pybullet-3.2.7-*.whl --break-system-packages
+```
+
+If a build appears to die silently, note that a shell command timeout kills its
+whole process group. Detach it: `setsid nohup pip wheel ... &`, then poll.
+
+Also required: `pygame`. Headless work needs
+`SDL_VIDEODRIVER=dummy`, `pygame.init()` **and** `pygame.display.set_mode(...)` —
+the `set_mode` call is not optional.
+
+## Where to change what (dev14 additions)
+
+| Change | Where |
+|---|---|
+| Arena size, wall thickness, grid, corridor floors | `engine/arena/world.py` |
+| Chassis dimensions and outlines | `engine/builder/robot_builder.py` `CHASSIS` |
+| Robot dimensions from CAD | `robots/ethology_v2.json` (source of truth) |
+| Physics backend for a game | that game's adapter construction |
+| Sensor response curves | `engine/sensor_physics.py` |
+| RE proximity threshold | `PROX_THRESHOLD`, kept in step across sim, all three firmware copies and the BT mock |
+
+## Testing
+
+| Tool | What it checks |
+|---|---|
+| `tools/test_pybullet_adapter.py` | adapter smoke test, 11 assertions |
+| `tools/arena_check.py` | reachability, stranded space, corridor clearance |
+| `tools/pf_sweep.py` | push/pull solvability sweep over the builder's real config space |
+
+**Run `arena_check` before claiming anything about an arena.** Three separate
+conclusions in this project's history have been overturned by arena geometry
+rather than control: a sealed chamber, a corridor barely wider than the robot,
+and an arena too small for the robot's own sensor range.
+
+## Traps
+
+- `engine/arena.py` is **dead code**, permanently shadowed by the
+  `engine/arena/` package. Editing it does nothing. The live file is
+  `engine/arena/__init__.py`.
+- `games/valentinos/arena/arena.py` is a byte-identical duplicate of the engine
+  renderer.
+- `SimpleDriveAdapter` has no remaining callers.

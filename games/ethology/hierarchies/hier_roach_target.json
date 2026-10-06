@@ -1,0 +1,10 @@
+{
+  "_hierarchy_name": "Moth Target",
+  "_description": "Travel in an arcing cruise, seeking light, and hugging to walls when possible.",
+  "behaviors": [
+    "escape_front",
+    "approach_object",
+    "approach_light",
+    "cruise_arc"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+    "_description": "CP1 Centered Barrier \u2014 PUSH/PULL ONLY. LDR Seek angled -45 (mounted left) plus an IR Flee aimed -90 (hard right). The asymmetry makes the resultant force rotate as the robot turns, so it circulates round the barrier without any explicit circulation term. ~6.5s.",
+    "chassis": "octagon",
+    "chassis_spec": {
+        "type": "octagon",
+        "bsquare_m": 0.169
+    },
+    "sensors": {
+        "LDR\u00b7F": {
+            "type": "LDR",
+            "channel": "W",
+            "x_m": 0.06,
+            "y_m": -0.04,
+            "angle_deg": -45,
+            "policy": "attract",
+            "flow": "seek"
+        },
+        "IR\u00b7F": {
+            "type": "IR",
+            "channel": "W",
+            "x_m": 0.05,
+            "y_m": -0.04,
+            "angle_deg": -90,
+            "policy": "repel",
+            "tangential": 0.0,
+            "flow": "flee"
+        }
+    },
+    "motors": {
+        "ML": {
+            "x_m": 0.0,
+            "y_m": 0.06
+        },
+        "MR": {
+            "x_m": 0.0,
+            "y_m": -0.06
+        }
+    }
+}

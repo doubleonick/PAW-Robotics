@@ -1,13 +1,14 @@
 {
-    "width": 2.0,
-    "height": 4.0,
+    "width": 1.0,
+    "height": 2.0,
     "wall_thickness": 0.05,
     "light_sources": [
         {
-            "x": 0.5,
-            "y": 0.0,
+            "x": 0.0,
+            "y": 0.50,
             "intensity": 1.0,
-            "radius": 0.4
+            "radius": 0.35
         }
-    ]
+    ],
+    "robot_start": {"x": 0.0, "y": -0.60, "heading_deg": 90.0}
 }

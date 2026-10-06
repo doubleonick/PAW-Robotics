@@ -1,0 +1,3 @@
+PAW-BOT: Notice how the robot accelerates toward brighter regions and slows in dimmer ones. Both motors respond identically to the same sensor — there is no steering, only speed.
+
+PAW-BOT: Now let's wire Vehicle 2a — the Coward. Open the wiring editor. Delete the existing wires, then connect LDR·C1 to FL with a blue wire, and LDR·C2 to FR with a blue wire. Left sensor to left motor, right to right. Press Done when ready.

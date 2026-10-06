@@ -19,8 +19,8 @@ import sys
 # Ensure package is importable from this directory
 sys.path.insert(0, os.path.dirname(__file__))
 
-from robosim.config import ArenaConfig, RobotConfig
-from robosim.simulation import Simulation
+from engine.config import ArenaConfig, RobotConfig
+from engine.simulation import Simulation
 
 
 def main():

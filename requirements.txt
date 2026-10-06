@@ -1,0 +1,50 @@
+# PAW-Robotics dependencies
+#
+#   pip install -r requirements.txt
+#
+# Use the SAME interpreter you intend to run and build with — see README
+# "Setting up a new machine". On Windows that means:
+#
+#   py -3.12 -m pip install -r requirements.txt
+#
+# NOT bare `pip`, which may belong to a different Python install. That mistake
+# produced a packaged app that died at startup with a missing pygame.
+
+# PYTHON VERSION: 3.12 or 3.13. Not 3.14+ — pygame publishes Windows wheels
+# for cp310..cp313 only, so on 3.14 pip tries a SOURCE build and dies on
+# distutils.msvccompiler. Check with `python --version`; list what you have
+# with `py -0`.
+
+# ── Required: the games will not start without these ─────────────────────────
+pygame>=2.6
+numpy>=1.24
+
+# PyBullet is the physics backend for all three games (Field Trip, Robot
+# Ethology, Valentino's) as of dev14.
+#
+# WHEEL AVAILABILITY, checked against PyPI on 2026-08-12:
+#   Linux   — manylinux wheels exist for cp36..cp311 only.
+#   Windows — NO wheel since pybullet 2.6.9 (cp27, 2020). None for any modern
+#             Python. **pip always compiles from source on Windows.**
+#   cp312 / cp313 — no wheels for ANY platform.
+#
+# So on Windows you MUST have the Microsoft C++ Build Tools installed before
+# this line will succeed, whatever Python version you use — downgrading does
+# not help. See README "Windows: PyBullet needs a C++ compiler".
+pybullet>=3.2.7
+
+# ── Optional: physical-robot features ────────────────────────────────────────
+# Needed only to talk to real hardware. The games and the simulator run fine
+# without them; imports are deferred so their absence costs nothing.
+#
+#   bleak    — BLE GATT transport ("Send via BLE" in the hierarchy builder)
+#   pyserial — serial/COM transport, the pre-BLE path
+bleak>=0.21
+pyserial>=3.5
+
+# ── Optional: analysis tools only ────────────────────────────────────────────
+# tools/pf_sim_predict*.py plotting. Nothing in the games imports it.
+matplotlib>=3.7
+
+# ── Optional: building the standalone hierarchy builder ──────────────────────
+pyinstaller>=6.0

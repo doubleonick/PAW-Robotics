@@ -1,0 +1,10 @@
+@intro
+PAW-BOT:  It's time to reach another light source!  But not so fast: this time you have to deal with a wall in your path.
+@build_hint
+PAW-BOT: You can take more than one approach for this build.
+@on_run
+PAW-BOT: Beat that wall!
+@success
+PAW-BOT: Congratulations!  You reached the light.  Did you <Flow-around>(5) the wall, or find another way?  You have now had the opportunity to see all of the types of motion available to your robot builds.  You are now ready for more challenges to test your metal.  Hang around, and get into the flow on this robotic Field Trip....
+@retry
+PAW-BOT: There are many ways to get past that wall.  Don't run from the challenge.

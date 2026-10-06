@@ -1,0 +1,19 @@
+{
+    "connections": [
+        {
+            "source": "IR·C",
+            "dest": "FL",
+            "color": "blue"
+        },
+        {
+            "source": "IR·C",
+            "dest": "FR",
+            "color": "blue"
+        }
+    ],
+    "gain": 1.0,
+    "neuron_biases": {
+        "N1": 1.0,
+        "N2": 1.0
+    }
+}

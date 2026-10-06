@@ -17,8 +17,12 @@ import sys
 
 # Ensure robosim package is importable
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-GAME_DIR  = os.path.dirname(os.path.abspath(__file__))
-TOOLS_DIR = os.path.join(ROOT, "tools")
+GAME_DIR       = os.path.dirname(os.path.abspath(__file__))
+ARENAS_DIR     = os.path.join(GAME_DIR, "arenas")
+_DEFAULT_ARENA = os.path.join(ARENAS_DIR, "arena_default.json")
+_SESSION_ARENA = os.path.join(ARENAS_DIR, "session_current.json")
+TOOLS_DIR        = os.path.join(ROOT, "tools")
+SHARED_TOOLS_DIR = os.path.join(ROOT, "tools")
 STATE_FILE = os.path.join(GAME_DIR, ".launcher_state.json")
 
 sys.path.insert(0, ROOT)
@@ -47,7 +51,7 @@ WW, WH = 760, 580
 
 DEFAULT_STATE = {
     "sketch":  "sketches/ldr_ethology.ino",
-    "arena":   "ethology_arena.json",
+    "arena":   None,
     "robot":   "robot.json",
     "hud":     False,
     "ir_only": False,
@@ -77,6 +81,14 @@ def save_state(state):
 
 
 # ── Launcher ──────────────────────────────────────────────────────────────────
+
+def _active_arena():
+    """Return the active arena path: session > default > legacy."""
+    for p in (_SESSION_ARENA, _DEFAULT_ARENA,
+              os.path.join(GAME_DIR, "ethology_arena.json")):
+        if os.path.exists(p):
+            return p
+    return _DEFAULT_ARENA
 
 class EthologyLauncher:
 
@@ -313,7 +325,7 @@ class EthologyLauncher:
         args = [
             os.path.join(ROOT, "main.py"),
             "--sketch", os.path.join(GAME_DIR, self.state["sketch"]),
-            "--arena",  os.path.join(GAME_DIR, self.state["arena"]),
+            "--arena",  _active_arena(),
             "--robot",  os.path.join(GAME_DIR, self.state["robot"]),
         ]
         if self.state.get("hud"):     args.append("--hud")
@@ -335,8 +347,8 @@ class EthologyLauncher:
 
     def _run_arena_builder(self):
         self._launch(
-            os.path.join(TOOLS_DIR, "arena_builder.py"),
-            ["--arena", os.path.join(GAME_DIR, self.state["arena"])]
+            os.path.join(SHARED_TOOLS_DIR, "arena_builder.py"),
+            ["--arena", _active_arena()]
         )
 
     def _run_playback(self):
@@ -344,7 +356,7 @@ class EthologyLauncher:
         os.makedirs(rec_dir, exist_ok=True)
         self._launch(
             os.path.join(TOOLS_DIR, "playback.py"),
-            [os.path.join(GAME_DIR, self.state["arena"]),
+            [_active_arena(),
              "--recordings", rec_dir]
         )
 

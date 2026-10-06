@@ -1,0 +1,10 @@
+@intro
+PAW-BOT: Place and define one or more sensors to help your robot be pulled to a light source like a magnet being drawn to metal.  Reach the center of the light to win!
+@build_hint
+PAW-BOT: This is the virtual field way to [    ] Light, like in Robot Ethology.
+@on_run
+PAW-BOT: May the (virtual) Force be with you.
+@success
+PAW-BOT: Congratulations!  Your design included an LDR sensor set to <Seek>(2) a light source.  Would this solution have worked with lights of different colors?  Play on to see.
+@retry
+PAW-BOT: Look closely at the glyphs for the kinds of motion your sensor can influence your robot to make.  Or, maybe your sensors have your robot reacting to the wrong type of source?

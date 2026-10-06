@@ -375,6 +375,29 @@ class ArduinoHAL:
     def _analog_read(self, pin) -> int:
         return int(self._read_pin(pin))
 
+    # ── Arduino RNG ───────────────────────────────────────────────────────
+    # random(max) -> [0, max); random(min, max) -> [min, max). This is the
+    # ARDUINO signature, not Python's random.randint (which is inclusive).
+    #
+    # Both were missing, which broke two things at once: the generated sketch
+    # calls randomSeed() in setup(), and setup() raising there aborted before
+    # later statements ran; and cruiseArc() calls random(2) to pick a
+    # direction. A sketch that raises in setup() presents as a robot that
+    # simply does nothing.
+
+    @staticmethod
+    def _random(a, b=None):
+        import random as _r
+        if b is None:
+            a = int(a)
+            return _r.randrange(a) if a > 0 else 0
+        return _r.randrange(int(a), int(b))
+
+    @staticmethod
+    def _random_seed(seed) -> None:
+        import random as _r
+        _r.seed(int(seed))
+
     @staticmethod
     def _map(value, in_min, in_max, out_min, out_max) -> float:
         if in_max == in_min:
@@ -467,6 +490,14 @@ class ArduinoHAL:
             "analogRead":        self._analog_read,
             "map":               self._map,
             "constrain":         self._constrain,
+
+            # Arduino RNG. Missing entirely, which broke TWO things: the
+            # generated sketch calls randomSeed() in setup(), and setup()
+            # aborting there left the drivetrain un-begun; and cruiseArc()
+            # calls random(2) to pick a direction. A sketch that raises in
+            # setup() looks exactly like a robot that does nothing.
+            "random":            self._random,
+            "randomSeed":        self._random_seed,
             "abs":               self._abs,
             "sqrt":              self._sqrt,
             "min":               self._min,

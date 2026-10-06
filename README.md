@@ -1,6 +1,309 @@
 # PAW-Robotics
 A suite of games written in Python that employ behavior based robotics within a PAW systems backdrop to explore ideas in robotics.
 
+---
+
+# Quick reference
+
+Every command uses `py -3.12` because this project needs Python 3.12 or 3.13
+and `python` on PATH may be something else — on one dev machine it is 3.14, for
+which pygame has no Windows wheel. Substitute your own if it differs; check
+with `py -0`.
+
+```
+REM ── run ────────────────────────────────────────────────────────────────
+py -3.12 paw.py                                REM game selector
+py -3.12 paw.py --game ethology                REM Robot Ethology
+py -3.12 paw.py --game forcefield              REM Field Trip
+py -3.12 paw.py --game vehicles                REM Valentino's Vehicles
+py -3.12 games\ethology\hub.py                  REM direct: shows console output
+
+REM ── build the standalone Hierarchy Builder (Windows only) ──────────────
+packaging\re_hierarchy_builder\clean_build.bat  REM after any failed attempt
+py -3.12 packaging\re_hierarchy_builder\preflight.py
+packaging\re_hierarchy_builder\build_windows.bat
+
+REM ── firmware ───────────────────────────────────────────────────────────
+py -3.12 firmware\sync_shared.py --check        REM has any copy drifted?
+py -3.12 firmware\sync_shared.py                REM propagate firmware/shared/
+
+REM ── checks ─────────────────────────────────────────────────────────────
+py -3.12 tools\arena_check.py                   REM all Field Trip arenas
+py -3.12 tools\test_pybullet_adapter.py         REM physics smoke test
+py -3.12 tools\pf_sweep.py --challenge cp3      REM solvability sweep
+
+REM ── first-time setup ───────────────────────────────────────────────────
+py -3.12 -m pip install -r requirements.txt
+```
+
+---
+
+# Setting up a new machine
+
+Tested on Windows 11 with Python 3.12. Linux and macOS work for the games;
+building the standalone Windows app requires Windows.
+
+## 1. Python
+
+**Python 3.12 or 3.13.** Not 3.14 or newer — pygame ships Windows wheels for
+**cp310 through cp313 only**, so on 3.14 pip falls back to building pygame from
+source and fails on `distutils.msvccompiler`. Check what `python` actually is:
+
+```
+python --version
+```
+
+If that reports 3.14+, you have the wrong interpreter on PATH. Use the launcher
+to pick an older one and substitute it for `python` in every command below:
+
+```
+py -0                       REM list every Python installed
+py -3.12 --version
+py -3.12 -m pip install -r requirements.txt
+```
+
+**Pick one interpreter and use it for everything.** Nearly every packaging
+failure in this project has come from `python`, `pip` and `pyinstaller` on PATH
+belonging to different installs — a packaged app that died at startup with a
+missing pygame, and a build that tried to compile pygame from source under
+3.14. `python` means a different thing on different machines; be explicit when
+more than one is installed.
+
+If `python` is the version you want, `python -m pip ...` is enough and every
+command below works as written. If you have several Pythons installed, use the
+launcher to be explicit — `py -3.13 -m pip ...` — and substitute that for
+`python` throughout.
+
+## 2. Dependencies
+
+```
+py -3.12 -m pip install -r requirements.txt
+```
+
+Everything except PyBullet installs in seconds. **On Windows, PyBullet needs a
+C++ compiler first** — see the next section.
+
+| Package | Needed for |
+|---|---|
+| `pygame` | all UI and rendering — **required** |
+| `numpy` | robot model maths — **required** |
+| `pybullet` | physics for all three games — **required** since dev14 |
+| `bleak` | BLE to physical robots — optional |
+| `pyserial` | serial/COM to physical robots — optional |
+| `matplotlib` | `tools/pf_sim_predict*.py` plots — optional |
+| `pyinstaller` | building the standalone app — optional |
+
+The optional imports are deferred, so the games run fine without them. If you
+only want the games and no hardware, `pygame numpy pybullet` is enough.
+
+## 2a. Windows: PyBullet needs a C++ compiler
+
+Symptom:
+
+```
+error: Microsoft Visual C++ 14.0 or greater is required.
+ERROR: Failed building wheel for pybullet
+```
+
+**PyBullet ships no Windows wheel.** Checked against PyPI on 2026-08-12: the
+last one was pybullet 2.6.9 for Python 2.7 in 2020. Every modern release is
+Linux-only (`manylinux`, cp36–cp311), and there is no cp312 or cp313 wheel for
+*any* platform. So on Windows, pip always compiles PyBullet from source and
+always needs a compiler.
+
+**Downgrading Python does not help on Windows.** There is no Windows wheel for
+3.11, 3.10 or anything else recent — the version only matters on Linux.
+
+### Fix: install the Microsoft C++ Build Tools
+
+1. Download **Build Tools for Visual Studio**:
+   https://visualstudio.microsoft.com/visual-cpp-build-tools/
+2. Run the installer and tick the **"Desktop development with C++"** workload.
+   The defaults within it (MSVC v143 and the Windows SDK) are what PyBullet
+   needs. Budget several GB and a reboot.
+3. Open a **new** terminal so the environment is picked up, then:
+
+```
+py -3.12 -m pip install -r requirements.txt
+```
+
+The PyBullet compile takes roughly 10–15 minutes. It only happens once.
+
+### Keep the wheel you just paid for
+
+```
+py -3.12 -m pip wheel pybullet --no-deps -w wheels
+```
+
+That produces `wheels\pybullet-3.2.7-cp313-cp313-win_amd64.whl` — reusable on
+any Windows machine with the same Python version, **and no compiler needed
+there**:
+
+```
+py -3.12 -m pip install wheels\pybullet-3.2.7-cp313-cp313-win_amd64.whl
+```
+
+Worth keeping for classroom machines: build once on one machine, copy the wheel
+to the rest. A wheel is Python-version and OS specific, so a Linux or 3.12 wheel
+will not install on Windows 3.13.
+
+## 3. Verify
+
+```
+py -3.12 paw.py
+```
+
+The game selector should open. If it does, you are set up.
+
+---
+
+# Launching from the CLI
+
+## The suite
+
+```
+py -3.12 paw.py                      # game selector
+py -3.12 paw.py --game vehicles      # Valentino's Vehicles
+py -3.12 paw.py --game ethology      # Robot Ethology
+py -3.12 paw.py --game forcefield    # Field Trip
+```
+
+`--game maze` and `--game novel` are reserved for unreleased games.
+
+Note `forcefield` for Field Trip — the key predates the rename.
+
+## Individual games
+
+`paw.py` runs games as subprocesses, so their console output may not reach your
+terminal. Launch a hub directly when you need to see prints or tracebacks:
+
+```
+py -3.12 games\field_trip\hub.py
+py -3.12 games\ethology\hub.py
+py -3.12 games\valentinos\hub.py
+```
+
+## Field Trip challenge selection
+
+`--game` picks the game, not the challenge. Field Trip has its own flag:
+
+```
+py -3.12 games\field_trip\hub.py --challenge 23     # 1-based sequence position
+py -3.12 games\field_trip\hub.py --ir-foldback      # model close-range IR fold-back
+```
+
+## Standalone tools
+
+```
+py -3.12 tools\arena_builder.py                      # arena editor
+py -3.12 tools\arena_builder.py --arena path.json    # edit a specific arena
+py -3.12 engine\builder\robot_builder.py            # robot builder
+```
+
+## Diagnostics and test harnesses
+
+```
+py -3.12 tools\test_pybullet_adapter.py              # physics adapter smoke test
+py -3.12 tools\pf_sweep.py --challenge cp3           # push/pull solvability sweep
+py -3.12 tools\arena_check.py                        # audit all Field Trip challenges
+py -3.12 tools\arena_check.py path\to\arena.json      # audit a single arena file
+```
+
+Run `arena_check` before drawing conclusions from any arena. Three separate
+findings in this project have been overturned by arena geometry rather than
+control: a sealed chamber, a corridor barely wider than the robot, and an arena
+too small for the robot's own sensor range.
+
+## Environment variables
+
+| Variable | Effect |
+|---|---|
+| `PAW_RENDER_PROBE=1` | log arena rect, scale and edges to `render_probe.txt` |
+| `PAW_BLE_DEBUG=1` | BLE scan and connection traces in the hierarchy builder |
+| `SDL_VIDEODRIVER=dummy` | headless pygame (also needs `display.set_mode`) |
+
+---
+
+# Building the standalone Hierarchy Builder
+
+A PyBullet-free classroom app: hierarchy builder plus Arduino export and BLE
+upload, no simulator. **Windows only** — PyInstaller does not cross-compile.
+
+```
+packaging\re_hierarchy_builder\clean_build.bat      # after any failed attempt
+py -3.12 packaging\re_hierarchy_builder\preflight.py
+packaging\re_hierarchy_builder\build_windows.bat
+```
+
+Output: `..\_output\dist\RE Hierarchy Builder\RE Hierarchy Builder.exe`,
+a sibling of the repo folder so build artifacts stay out of the source tree.
+
+Preflight must pass before you build. It checks that the app imports with
+PyBullet excluded, that BLE traces are off, that the bundled firmware carries
+current constants, and — the one that matters most — that the interpreter
+running it has PyInstaller, pygame and pyserial. It prints `sys.executable`;
+if that is not the Python you expect, fix that first.
+
+`packaging/re_hierarchy_builder/README.md` has the full detail and a
+troubleshooting section.
+
+---
+
+# Repository layout
+
+| Path | Contents |
+|---|---|
+| `paw.py` | suite launcher and game selector |
+| `games/` | the three games: `field_trip/`, `ethology/`, `valentinos/` |
+| `engine/` | shared code — see below |
+| `tools/` | arena builder, test harnesses, analysis scripts |
+| `firmware/` | Arduino sketches for the physical robots |
+| `robots/` | CAD-derived robot specs — **the source of truth for dimensions** |
+| `materials/` | Arduino classes and icons shipped to classrooms |
+| `packaging/` | standalone app build |
+| `docs/` | photos, specs, reference material |
+
+Key shared modules:
+
+| Module | Owns |
+|---|---|
+| `engine/arena/world.py` | arena dimensions and corridor constraints — one definition for all games |
+| `engine/arena/__init__.py` | arena JSON schema, loader, renderer |
+| `engine/physics_adapter.py` | the physics contract (`step`/`get_pose`/`ray_cast`/`contacts`) |
+| `engine/adapters/` | physics backends |
+| `engine/sensor_physics.py` | sensor models (Field Trip, Valentino's) |
+| `engine/sensors/sensor_models.py` | sensor models (Robot Ethology) |
+| `engine/builder/robot_builder.py` | chassis table and robot builder UI |
+| `engine/config.py` | robot and arena config objects |
+
+`ARCHITECTURE.md` explains the naming convention and the chassis/component/world
+layer model. `DEVELOPER_GUIDE.md` has a "where to change what" table.
+`FUTURE_WORK.md` is the running investigation log, including corrections.
+
+---
+
+# Documentation map
+
+| File | What it is for |
+|---|---|
+| `README.md` | this file — setup, launching, layout |
+| `ARCHITECTURE.md` | how the pieces fit; naming rules; what is shared |
+| `DEVELOPER_GUIDE.md` | where to change what; testing; known traps |
+| `CHANGELOG.md` | release history |
+| `REGRESSION_LOG.md` | what broke, why, and whether it is fixed |
+| `FUTURE_WORK.md` | investigation log and open questions |
+| `HANDOFF_dev14.md` | continuation notes for picking the project back up |
+| `FIELD_TRIP_STATUS.md` | Field Trip specifics |
+| `packaging/re_hierarchy_builder/README.md` | standalone app build and troubleshooting |
+
+---
+
+# Design notes
+
+The remainder of this file describes the intended shape of the suite. It is a
+vision document and parts of it run ahead of what is implemented.
+
+
 This suite of games uses PyBullet as a 3D backend to create a series of environments and robots that aim to accurately reflect the functionality of physical robots for the purposes of letting people solve a variety of challenges using robotics principles and tools with or without a physical kit of hardware.  The frontend uses PyGame, and thus you have a 3D mathematical backend projected onto a 2D set of graphics and visual interactions.  There are aspects of the game that work around this by showing multiple points of view for a single event or activty.  For example, many of the games have a robot builder application and may use top, side, front and back views for things like sensor placement.
 
 The set of games share some tools and resources.  For example, sensors and actuators are simulated using the same classes and logic, regardless of the game(s) in which they are used.  Similarly, environmental modules, such as light sources and walls are governed the same way across all games.  Each game is developed in such a way as to allow it to be a standalone applicaiton, however.  The gammification elements are intended to be optional, meaning each game may be used as a plainer pedagogical tool, or may be played within the context of a larger whole; a narrative that extends across game play.

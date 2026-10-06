@@ -1,0 +1,5 @@
+PAW-BOT: Welcome to Curious Robotics! I'm PAW-Bot, your guide through the world of behavior-based robotics.
+
+PAW-BOT: These simulations explore robot behavior from the ground up. Each game in CR Laboratories teaches something different about how simple rules produce complex, lifelike motion.
+
+PAW-BOT: Select a game to begin. Press SPACE to advance this text.

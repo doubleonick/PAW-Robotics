@@ -20,6 +20,7 @@ class LightSource:
     y: float          # metres
     intensity: float  # 0.0 – 1.0 nominal
     radius: float     # effective radius in metres
+    color: str = "white"  # "white"/"red"/"green"/"blue"
 
 
 @dataclass
@@ -92,6 +93,24 @@ class ArenaConfig:
             return ArenaConfig.from_dict(json.load(f))
 
 
+def _chassis_from_geometry(d: dict):
+    """Derive a chassis spec from a robot.json that describes its body the CAD
+    way (geometry + bounding_square) rather than carrying an explicit spec.
+
+    games/ethology/robot.json is written this way, so without this RE's polygon
+    collision path stays dormant even though the data is present.
+    """
+    geo = d.get("geometry")
+    if geo == "octagon" and d.get("bounding_square"):
+        return {"type": "octagon", "bsquare_m": d["bounding_square"]}
+    if geo == "rectangle" and d.get("width_m") and d.get("length_m"):
+        return {"type": "rectangle", "width_m": d["width_m"],
+                "length_m": d["length_m"]}
+    if geo == "triangle" and d.get("circum_r_m"):
+        return {"type": "triangle", "circum_r_m": d["circum_r_m"]}
+    return None
+
+
 @dataclass
 class RobotConfig:
     # Geometry
@@ -111,6 +130,12 @@ class RobotConfig:
 
     # Physics
     total_mass_kg: float = 0.8
+
+    # Chassis outline. Either a spec dict {"type": "octagon", "bsquare_m": ...}
+    # or a key into robot_builder.CHASSIS. When present, RobotModel builds a
+    # convex-hull collision shape from the DRAWN outline instead of a cylinder,
+    # so a rectangular robot can catch a wall on its corner and slip along it.
+    chassis_spec: dict | str | None = None
 
     @staticmethod
     def from_dict(d: dict) -> "RobotConfig":
@@ -142,6 +167,8 @@ class RobotConfig:
             sensors=sensors,
             mass_components=d.get("mass_components", []),
             total_mass_kg=d.get("total_mass_kg", 0.8),
+            chassis_spec=(d.get("chassis_spec") or d.get("chassis")
+                          or _chassis_from_geometry(d)),
         )
 
     @staticmethod

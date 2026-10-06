@@ -1,0 +1,14 @@
+{
+    "_description": "C03 Touch the Wall — one IR attractor facing forward",
+    "chassis": "octagon",
+    "chassis_spec": {"type": "octagon", "bsquare_m": 0.169},
+    "sensors": {
+        "IR·C": {"type": "IR", "channel": "W",
+                 "x_m": 0.08, "y_m": 0.0,
+                 "angle_deg": 0.0, "policy": "attract"}
+    },
+    "motors": {
+        "ML": {"x_m": 0.0, "y_m":  0.060},
+        "MR": {"x_m": 0.0, "y_m": -0.060}
+    }
+}

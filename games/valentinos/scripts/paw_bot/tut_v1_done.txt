@@ -1,0 +1,1 @@
+PAW-BOT: Well done! You have wired Vehicle 1. One sensor drives both motors equally — the brighter the light, the faster the robot moves. Press Run and watch it respond.

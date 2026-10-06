@@ -1,0 +1,39 @@
+{
+    "_description": "CP5 Dead-End \u2014 PUSH/PULL ONLY. LDR Seek -20 with an IR Flee -20, both offset left. Backs out of the pocket and comes round to the light. ~16s (15 of 729 configs solve).",
+    "chassis": "octagon",
+    "chassis_spec": {
+        "type": "octagon",
+        "bsquare_m": 0.169
+    },
+    "sensors": {
+        "LDR\u00b7F": {
+            "type": "LDR",
+            "channel": "W",
+            "x_m": 0.06,
+            "y_m": -0.04,
+            "angle_deg": -20,
+            "policy": "attract",
+            "flow": "seek"
+        },
+        "IR\u00b7F": {
+            "type": "IR",
+            "channel": "W",
+            "x_m": 0.05,
+            "y_m": -0.04,
+            "angle_deg": -20,
+            "policy": "repel",
+            "tangential": 0.0,
+            "flow": "flee"
+        }
+    },
+    "motors": {
+        "ML": {
+            "x_m": 0.0,
+            "y_m": 0.06
+        },
+        "MR": {
+            "x_m": 0.0,
+            "y_m": -0.06
+        }
+    }
+}

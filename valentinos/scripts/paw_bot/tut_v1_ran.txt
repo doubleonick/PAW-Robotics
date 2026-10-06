@@ -1,3 +1,0 @@
-PAW-BOT: Notice how the robot steers away from whatever it senses. The left sensor drives the right motor, and vice versa. Simple ipsilateral wiring, but the behaviour looks purposeful.
-
-PAW-BOT: Now let's edit the arena. Press "Edit Arena" and use the Walls tab to add one or two obstacles for your robot to react to. When you are done, press Done in the arena builder, then Run again.
