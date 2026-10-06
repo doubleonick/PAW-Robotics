@@ -49,9 +49,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 
 # ── Inlined from engine/wifi/mock_robot_server.py ──────────────────────────
-PROX_THRESHOLD  = 20    # cm — matches EthologyRobot.h / engine.hal.ethology_robot.
-                        # Was 15, a third value: sim 33, firmware 35, mock 15.
-LIGHT_THRESHOLD = 10    # getData() units — lightGradientThreshold() fires when
+# NOTE: this module raises NameError on import and has never run. The values
+# below did NOT match the ones they claimed to: firmware and simulator are both
+# PROX_THRESHOLD 35 and LIGHT_THRESHOLD 25. Corrected here so that whoever
+# revives this file does not inherit a third set of thresholds — which is how a
+# flattened arc, an inverted sensor and a compensating inverted behaviour all
+# survived once already. Verify against firmware/shared/EthologyRobot.h before
+# trusting them.
+PROX_THRESHOLD  = 35    # cm — matches EthologyRobot.h / engine.hal.ethology_robot
+LIGHT_THRESHOLD = 25    # getData() units — lightGradientThreshold() fires when
 class SensorState:
     """
     Sensor values in processed getData() units — matching physical robot output.

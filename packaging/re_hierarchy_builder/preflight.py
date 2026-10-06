@@ -112,8 +112,12 @@ def main() -> int:
             print(f"      {k:18s} {m.group(1) if m else '?'}")
         if vals["PROX_THRESHOLD"] and vals["PROX_THRESHOLD"].group(1) == "35":
             print("      NOTE: PROX_THRESHOLD 35 is the pre-bench-test value.")
-            print("            The simulator uses 20. Resolve with a raw-ADC")
-            print("            measurement on the board you are actually using.")
+            print("            Firmware and simulator now agree on 35, so this")
+            print("            is no longer a divergence — but the underlying")
+            print("            raw->cm mapping was derived on an Uno R4 (5 V)")
+            print("            and is wrong on a Giga (3.3 V). Fix the mapping")
+            print("            with a raw-ADC measurement on the board you are")
+            print("            actually using, THEN choose the threshold.")
 
     # 4. Data files the spec wants. Missing ones are filtered out silently by
     #    the spec, so a typo there costs you a runtime failure instead.

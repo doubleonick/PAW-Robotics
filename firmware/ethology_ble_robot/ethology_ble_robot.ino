@@ -1,6 +1,8 @@
 /*
   ethology_robot_firmware.ino
   ---------------------------
+  27 Aug 2026
+
   PAW Ethology robot sketch — BLE hierarchy dispatch.
 
   Merge of ethologyPrototypeV2.ino (robot behaviour + CogDisplay) and
@@ -86,66 +88,21 @@
 // this sketch. Two lineages of the same firmware is how the cruise-arc values
 // and the CogLight polarity both drifted.
 //
-//   PAW_USE_DISPLAY 0  (default) — no display. Compiles on any board; needs no
-//                                  extra files. This is what the game suite
-//                                  bundles.
-//   PAW_USE_DISPLAY 1            — GIGA Display Shield HUD. Requires
-//                                  CogDisplay.h/.cpp in this folder and the
-//                                  Arduino_H7_Video library.
-//
-// Set it here, or with -DPAW_USE_DISPLAY=1.
-// ── Heartbeat LED polarity ────────────────────────────────────────────────────
-// GIGA R1: LED_BUILTIN is one of the on-board RGB LEDs and they are ACTIVE LOW
-// — digitalWrite(pin, LOW) turns it ON. Uno R4 is active HIGH. Getting this
-// wrong does not hide the signal, but it inverts it: the "solid = running"
-// state would read as dark, which is the same as "no power".
-//
-// Set to 1 on Giga, 0 on Uno R4.
-#ifndef PAW_LED_ACTIVE_LOW
-  #if defined(ARDUINO_GIGA) || defined(ARDUINO_ARCH_MBED_GIGA)
-    #define PAW_LED_ACTIVE_LOW 1
-  #else
-    #define PAW_LED_ACTIVE_LOW 0
-  #endif
-#endif
+//   All build switches now live in PAWConfig.h — robot letter, display mode,
+//   sensor tracing. Edit that file; they must be visible to every translation
+//   unit, not just this one.
+// ── Build configuration ───────────────────────────────────────────────────────
+// Robot letter, display mode and tracing all live in PAWConfig.h so that this
+// sketch and CogDisplay.cpp compile against the SAME values. Defining them
+// here instead would apply only to this file, and the link would fail with
+// "undefined reference to CogDisplay::setGuards" — the library half would have
+// been built with the defaults.
+#include "PAWConfig.h"
 
-#if PAW_LED_ACTIVE_LOW
-  #define LED_WRITE(on) digitalWrite(LED_BUILTIN, (on) ? LOW : HIGH)
-#else
-  #define LED_WRITE(on) digitalWrite(LED_BUILTIN, (on) ? HIGH : LOW)
-#endif
+// CogDisplay.h supplies a do-nothing stand-in of its own when PAW_USE_DISPLAY
+// is 0, so this include is unconditional and the call sites below need no #if.
+#include "CogDisplay.h"
 
-// ── Robot identity ────────────────────────────────────────────────────────────
-// Which robot this board IS. Change the letter, re-flash. Nothing else in the
-// sketch needs editing.
-#ifndef PAW_ROBOT_ID
-#define PAW_ROBOT_ID A
-#endif
-#define _PAW_STR2(x) #x
-#define _PAW_STR(x)  _PAW_STR2(x)
-#define PAW_ROBOT_NAME ("Robot" _PAW_STR(PAW_ROBOT_ID))
-
-#ifndef PAW_USE_DISPLAY
-#define PAW_USE_DISPLAY 0
-#endif
-
-#if PAW_USE_DISPLAY
-  #include "CogDisplay.h"
-#else
-  // Do-nothing stand-in so the call sites below need no #if of their own.
-  // Costs nothing: every method is empty and inlined away.
-  class CogDisplay {
-  public:
-      void begin() {}
-      void setBleStatus(const char*, const char*) {}
-      void updateStatus() {}
-      void update() {}
-      void setLights(int, int) {}
-      void setProximity(int, int) {}
-      void setBumps(int, int, int, int) {}
-      void setWheelSpeeds(int, int) {}
-  };
-#endif
 // #include "CogAnaDigi.h"
 
 // #include "CogProximity.h"
@@ -250,6 +207,10 @@ static bool tryInstallHierarchy() {
         Serial.print("Hierarchy installed, ");
         Serial.print(String(count));
         Serial.println(" rungs");
+        // BEFORE acceptHierarchy(): it calls _clearPending(), so pendingNames()
+        // is empty afterwards.
+        display.setHierarchy(ble.pendingNames(), count);
+
         ble.acceptHierarchy();
         return true;
     }
@@ -267,6 +228,12 @@ static bool tryInstallHierarchy() {
 void setup()
 {
     Serial.begin(9600);
+
+    // Say which release built this, before anything that can fail. After a
+    // MAJOR release an old receiver may not understand a new builder, and this
+    // line is how you find out which one you have.
+    Serial.print("Hierarchy Builder version: ");
+    Serial.println(PAW_BUILDER_VERSION);   // "unversioned" = not a download
     bot.begin(LEFT_SERVO_PIN, RIGHT_SERVO_PIN);
     display.begin();
 
@@ -385,24 +352,26 @@ void loop()
     heartbeat(_state == RobotState::Running);
 
     // ── Display ───────────────────────────────────────────────────────────
-    // BLE status/session only.  Everything below stays commented out so the
-    // screen never reveals sensor state, wheel commands, or the hierarchy.
+    // With PAW_DISPLAY_DEV 0 every call below compiles to nothing, so the
+    // classroom build still shows BLE status and session only. No #if here:
+    // commented-out call sites rot, and these went stale once already —
+    // they re-read the Cog objects, which takes a NEW sample that can
+    // disagree with the one this tick's arbitration used.
+    if (_state == RobotState::Running) {
+        bool guards[CogDisplay::MAX_ROWS];
+        const int n = bot.hierarchyLength();
+        for (int i = 0; i < n; i++) {
+            guards[i] = bot.guardMet(bot.behaviorAt(i));
+        }
+        display.setGuards(guards, n);
+        display.setActive(bot.lastFiredIndex());
 
-    // display.setLights(
-    //     bot.leftLight.getData(),
-    //     bot.rightLight.getData());
-
-    // display.setProximity(
-    //     bot.leftProx.getData(),
-    //     bot.rightProx.getData());
-
-    // display.setBumps(
-    //     bot.leftFrontBump.getData() == 0,
-    //     bot.rightFrontBump.getData() == 0);
-
-    // display.setWheelSpeeds(0, 0);
-
-    // display.update();
+        const EthologyRobot::SensorSnapshot s = bot.snapshot();
+        display.setSensors(s.leftProx, s.rightProx, s.lightGradient,
+                           s.leftFrontBump, s.rightFrontBump,
+                           s.leftBackBump,  s.rightBackBump);
+    }
+    display.update();
 
     showState();
     display.updateStatus();

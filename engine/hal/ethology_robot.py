@@ -31,16 +31,27 @@ import random
 # and SATURATES at 18 (a wall at 18 cm and one at 2 cm read the same), which
 # matters only if the threshold is ever raised. 35 is confirmed on hardware.
 PROX_THRESHOLD  = 35
-LIGHT_THRESHOLD = 15    # abs(rightLight - leftLight) needed to trigger
+
+# LIGHT_THRESHOLD is in CogLight units (0-100), applied to |right - left|.
+# Raised on hardware 15 -> 20 -> 25: each step made the light behaviours more
+# decisive without making them fire in ordinary room light. Deliberately
+# absolute rather than normalised, so sensitivity depends on sensor geometry
+# and different robots respond differently to the same lamp.
+LIGHT_THRESHOLD = 25
 
 # Drive tuning. An arc is NOT cruise with one wheel boosted: the inner wheel
 # drops well below cruise and the outer stays below it too, so an arc is a
 # slow tight turn rather than a fast drift.
-CRUISE_SPEED    = 60
-ARC_INNER_SPEED = 30
-ARC_OUTER_SPEED = 50
+#
+# Raised on hardware: cruise 60 -> 80, arc 30/50 -> 50/70. The arc keeps its
+# shape (a fixed 20-point difference, both wheels below cruise), so the radius
+# widens only with the speed sum — about 0.16 m -> 0.24 m, well short of the
+# 0.52 m that shrinking the DIFFERENCE produces.
+CRUISE_SPEED    = 80
+ARC_INNER_SPEED = 50
+ARC_OUTER_SPEED = 70
 CRUISE_SECONDS  = 0.1
-ESCAPE_SECONDS  = 0.8   # both escapes; 0.1 was one tick and unobservable
+ESCAPE_SECONDS  = 1.2   # raised 0.8 -> 1.2 on hardware; 0.1 was unobservable
 
 # cruise_arc holds a direction this long before re-flipping. Flipping every
 # tick made successive arcs cancel into a straight wobble.
@@ -287,21 +298,39 @@ class EthologyRobot:
             self._servo.driveProportional(40, -40, 0.5)
 
     def escapeFrontCollision(self) -> None:
-        """Spin off the bumped side; back straight out if pinned both sides.
+        """Arc BACKWARD away from the bumped side; spin if pinned both sides.
 
-        The two bumper tests used to be separate ifs, so a square-on hit ran
-        one spin and then the other and they cancelled — the robot sat still
-        while stuck, the worst available response.
+        VERIFIED ON HARDWARE, and do not re-derive these from the wheel
+        arithmetic. This used to spin in place off the bumped side, which
+        changed heading without moving the robot, so it could rotate clear of
+        the bumper and drive straight back in. An arc backward both reverses
+        and turns.
+
+        The first attempt at the arcs had the pairs the other way round. On the
+        floor those turned the robot INTO the struck side, and with
+        avoid_object also in the hierarchy the two fought: escape backed toward
+        the obstacle, avoid steered off it, repeat. The wrong values were
+        checked by comparing the sign of the wheel difference against the old
+        verified spin pairings — a relative argument — and that still gave the
+        wrong answer, because backing up while turning does not read the same
+        way as spinning in place.
+
+        The two bumper tests are EXCLUSIVE. They used to be separate ifs, so a
+        square-on hit ran one manoeuvre and then the other and they cancelled —
+        the robot sat still while stuck, the worst available response. A
+        both-sides hit now spins for twice the duration; reversing straight out
+        was tried first and kept the robot facing the obstacle, so it drove
+        back into it.
         """
         left  = self._leftFrontBumpData  == 0
         right = self._rightFrontBumpData == 0
 
         if left and right:
-            self._servo.driveProportional(-100, -100, ESCAPE_SECONDS)
+            self._servo.driveProportional(-100, 100, ESCAPE_SECONDS * 2)
         elif left:
-            self._servo.driveProportional(-100, 100, ESCAPE_SECONDS)
+            self._servo.driveProportional(-40, -80, ESCAPE_SECONDS)
         elif right:
-            self._servo.driveProportional(100, -100, ESCAPE_SECONDS)
+            self._servo.driveProportional(-80, -40, ESCAPE_SECONDS)
         self.clear_contact()
 
     def escapeBackCollision(self) -> None:

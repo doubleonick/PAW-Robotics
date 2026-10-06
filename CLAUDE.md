@@ -208,9 +208,12 @@ answer without naming the robot.
 
 ## Open, and worth knowing before touching related code
 
-- **`PROX_THRESHOLD` is 35 in firmware, 20 in the simulator.** Deliberate: the
-  raw→cm calibration was derived on an Uno R4 (5 V) and is wrong on a Giga
-  (3.3 V). Needs a bench measurement, not a guess.
+- **`PROX_THRESHOLD` is 35 in both firmware and simulator.** No longer a
+  divergence. The open problem is underneath it: the raw→cm calibration was
+  derived on an Uno R4 (5 V) and is wrong on a Giga (3.3 V), which read roughly
+  961 where the Uno read 634. Fix the mapping with a bench measurement on the
+  board in use, THEN choose the threshold. `engine/bluetooth/mock_bt_server.py`
+  still carries 20, but that file raises on import and is dead.
 - **Servo neutral is 1500 µs**, but real servos differ per side.
   `CogServo::setNeutral()` takes measured values; nothing has been measured yet.
 - **`Servo.h` does not list `mbed_giga`** among supported architectures.

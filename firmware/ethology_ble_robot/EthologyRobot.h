@@ -95,7 +95,18 @@ public:
     // Measure raw analogRead() at known distances on the board you are
     // actually using, fix the mapping first, then choose the threshold.
     static constexpr int PROX_THRESHOLD  = 35;
-    static constexpr int LIGHT_THRESHOLD = 15;
+    // LIGHT_THRESHOLD is in CogLight units (0-100 after mapping), applied to
+    // |right - left|. Raised on hardware, 15 -> 20 -> 25: each step made the
+    // light behaviours more decisive without making them fire in even room
+    // light.
+    //
+    // The value is deliberately absolute, not normalised. Sensitivity then
+    // depends on geometry -- sensors splayed outward or spaced farther apart
+    // see a steeper gradient than sensors pointed inward or close together --
+    // so different robots respond differently to the same lamp, which is part
+    // of what students observe. Tune it by sweeping a lamp at a typical
+    // distance and reading LIGHT GRAD on the Full HUD or PAW_SENSOR_TRACE.
+    static constexpr int LIGHT_THRESHOLD = 25;
     static constexpr int COLL_THRESHOLD  = 1;
 
     // ================================
@@ -110,9 +121,16 @@ public:
     // CRUISE_SPEED + ARC_BOOST formulation (60/70) looks tidier and produces a
     // 0.52 m turning radius against this pairing's 0.16 m -- more than three
     // times wider, which will not turn inside a corridor the robot can fit in.
-    static constexpr int   CRUISE_SPEED    = 60;
-    static constexpr int   ARC_INNER_SPEED = 30;   // verified prototype
-    static constexpr int   ARC_OUTER_SPEED = 50;   // note: BELOW cruise, not boosted
+    //
+    // UPDATED ON HARDWARE: cruise 60 -> 80, which reads better on the floor and
+    // gives collisions more force; arc 30/50 -> 50/70. The arc keeps its shape
+    // (a fixed 20-point difference, both wheels below cruise), so the radius
+    // widens only in proportion to the speed sum: 0.16 m -> about 0.24 m by
+    // the figures above. That is well short of the 0.52 m this note warns
+    // about, which came from shrinking the difference, not raising the speed.
+    static constexpr int   CRUISE_SPEED    = 80;
+    static constexpr int   ARC_INNER_SPEED = 50;   // set on hardware
+    static constexpr int   ARC_OUTER_SPEED = 70;   // still BELOW cruise, not boosted
     static constexpr float CRUISE_SECONDS  = 0.1;
 
     // HOW LONG ONE ARC LASTS.
@@ -135,8 +153,10 @@ public:
     // blip, so the behaviour looked broken when it was merely brief.
     //
     // Long enough to clear an obstacle, short enough that the hierarchy stays
-    // responsive. Both escapes use it so they are equally legible.
-    static constexpr float ESCAPE_SECONDS = 0.8;
+    // responsive. Raised 0.8 -> 1.2 on hardware. Both escapes use it so they
+    // are equally legible; a head-on hit that pins both bumpers runs twice
+    // this, since turning out of a square-on obstacle takes longer.
+    static constexpr float ESCAPE_SECONDS = 1.2;
 
     static constexpr unsigned long ARC_HOLD_MIN_MS = 700;
     static constexpr unsigned long ARC_HOLD_MAX_MS = 1900;

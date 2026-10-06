@@ -5,48 +5,27 @@
 #include "CogAnaDigi.h"
 
 // Analog light sensor derived from CogAnaDigi.
-// ============================================================================
-// SENSOR POLARITY — read before pairing this code with different hardware
-// ============================================================================
-// getData() returns 0 = BRIGHT, 100 = DARK.
 //
-// The SIMULATOR matches this in engine/sensors/sensor_models.LightSensor,
-// which inverts its raw value ONCE. Do not also invert CogLight's map on the
-// Python side: two inversions compose to the identity and silently change
-// nothing, which cost a debugging round here.
+// POLARITY — getData() always returns 0 = DARK, 100 = BRIGHT.
 //
-// That is the opposite of what most people expect, and it is not arbitrary:
-// the LDR on this robot sits in a divider whose analogRead RISES IN THE DARK.
-// analyzeData() maps raw [0,1023] -> [100,0], so the inversion in the map
-// CANCELS the inversion in the wiring... and then the whole chain is inverted
-// once more relative to intuition. The behaviours in EthologyRobot are
-// calibrated against THIS convention and are verified on hardware.
+// Which end of the RAW range is bright is a property of the sensor, not of the
+// behaviours, and is set once in PAWConfig.h via PAW_LIGHT_HIGH_IS_BRIGHT.
+// Default 0 means raw rises in the DARK, which is the sensor every light
+// behaviour in EthologyRobot was tuned against. Set it wrong and the gradient
+// sign flips: approach_light flees the lamp and avoid_light chases it.
 //
-// WHAT THIS MEANS FOR A DIFFERENT ROBOT
-// -------------------------------------
-// If you pair this firmware with light sensors wired the other way (rising
-// with brightness — an LDR pulled the opposite way, or most breakout modules
-// and phototransistor boards), every light behaviour will invert:
-// approach_light will flee and avoid_light will home in.
+// Do NOT "fix" an apparent reversal by swapping approachLight() and
+// avoidLight() or by re-deriving their motor pairs. Those were each got wrong
+// twice by reasoning from the gradient sign, and are now correct.
 //
-// THE FIX IS HERE, IN ONE LINE, NOT IN THE BEHAVIOURS.
-// Change the map in analyzeData() so that getData() still returns
-// 0 = BRIGHT, 100 = DARK for your sensor:
+// TO TELL WHICH SENSOR YOU HAVE: Serial.println(rightLight.getData()), then
+// shine a torch at the right sensor. The number must go UP toward 100. If it
+// goes down, flip PAW_LIGHT_HIGH_IS_BRIGHT.
 //
-//     rising-in-dark  (this robot):  map(raw, 0, 1023, 100, 0)
-//     rising-in-light (many others): map(raw, 0, 1023, 0, 100)
-//
-// Do NOT "fix" it by swapping approachLight() and avoidLight(), and do not
-// re-derive their motor commands. Those were each got wrong twice by
-// reasoning from the gradient sign, and are now correct.
-//
-// HOW TO TELL WHICH YOU HAVE
-// --------------------------
-//     Serial.println(rightLight.getData());
-// Shine a torch at the right sensor. The number must go DOWN toward 0.
-// If it goes UP, flip the map above.
-// ============================================================================
-
+// SIMULATOR PAIRING: engine/sensors/sensor_models.LightSensor must end up on
+// this same convention, and it inverts its raw value ONCE to get there. Do not
+// also invert here on the Python side — two inversions compose to the identity
+// and silently change nothing, which cost a debugging round.
 class CogLight : public CogAnaDigi {
 public:
     // Require a labeled analog pin, e.g., "A0", "A3"
@@ -55,7 +34,9 @@ public:
     // Read raw sensor value via base class, mirror to subclass _rawData
     int getRawData();
 
-    // Map raw [0..1023] to [0..100] and return
+    // Map raw [0..1023] to [0..100], 0 = dark and 100 = bright. Which end of
+    // the raw range is bright depends on the sensor: PAW_LIGHT_HIGH_IS_BRIGHT
+    // in PAWConfig.h.
     int getData();
     // Return the LAST value computed by getData() WITHOUT taking a new
     // sample. Use this when you need the exact reading a prior getData()

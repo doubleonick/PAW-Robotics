@@ -165,30 +165,45 @@ void EthologyRobot::approachLight() {
 // ================================
 // Collision-Based Behaviors
 // ================================
-// Struck on the front: spin AWAY from the side that was hit.
+// Struck on the front: ARC BACKWARD, away from the side that was hit.
 //
-// VERIFIED ON HARDWARE. The per-side directions were previously swapped, so
-// the robot turned into the obstacle it had just hit and stayed jammed
-// against it. As with the light behaviours, do not re-derive these from the
-// wheel arithmetic — press a bumper and watch.
+// This used to spin in place. Spinning changed heading without moving the
+// robot, so it could rotate clear of the bumper and drive straight back in.
+// An arc backward both reverses and turns. Duration is ESCAPE_SECONDS.
 //
-// The two tests are now EXCLUSIVE. They used to be separate ifs, so a
-// head-on hit that closed both bumpers ran one spin and then the other, and
-// the two cancelled: the robot sat still while pinned, which is the worst
-// possible response to being stuck. A both-sides hit now reverses instead,
-// which is the only move that clears a square-on obstacle.
+// VERIFIED ON HARDWARE, and the first attempt was wrong. The arcs were first
+// set the other way round. On the floor those turned the robot INTO the struck
+// side, and with avoid_object also in the hierarchy the two behaviours fought:
+// escape backed toward the obstacle, avoid steered off it, repeat. Reversing
+// the pairs fixed it; the values were then widened to -40/-80 for a tighter
+// turn out.
+//
+// Worth recording why the wrong values looked right. They were checked by
+// comparing the sign of the wheel difference against the old verified spin
+// pairings -- a RELATIVE argument, not first-principles arithmetic -- and that
+// argument still gave the wrong answer. Backing up while turning does not read
+// the same way as spinning in place. So the rule here is absolute: do not
+// derive or "correct" these from any reasoning. Press a bumper and watch.
+//
+// The two tests are EXCLUSIVE. They used to be independent ifs, so a head-on
+// hit closing both bumpers ran one manoeuvre and then the other and they
+// cancelled -- the robot sat still while pinned. A both-sides hit now spins,
+// for twice the duration: see the comment on that branch for why reversing
+// straight out was tried first and did not work.
 void EthologyRobot::escapeFrontCollision() {
     const bool left  = (_leftFrontBumpData  == 0);
     const bool right = (_rightFrontBumpData == 0);
 
     if (left && right) {
-        driveProportional(-100, -100, ESCAPE_SECONDS);   // pinned: back straight out
+        // Pinned square-on: spin, for twice as long. Reversing straight out
+        // kept the robot facing the obstacle, so it drove back into it.
+        driveProportional(-100, 100, ESCAPE_SECONDS * 2);
     }
     else if (left) {
-        driveProportional(-100, 100, ESCAPE_SECONDS);
+        driveProportional(-40, -80, ESCAPE_SECONDS);
     }
     else if (right) {
-        driveProportional(100, -100, ESCAPE_SECONDS);
+        driveProportional(-80, -40, ESCAPE_SECONDS);
     }
 }
 
@@ -237,9 +252,9 @@ void EthologyRobot::cruiseArc() {
 }
 
 // Inner wheel slowed, outer wheel also below cruise -> a slow, TIGHT arc.
-// Restored from ethologyPrototypeV2 (30, 50): the merged version had used
-// CRUISE_SPEED + ARC_BOOST (60, 70), which is 3.3x wider and cannot turn
-// inside a corridor the robot fits through.
+// ARC_INNER_SPEED / ARC_OUTER_SPEED, now 50/70 from hardware testing. See the
+// note in EthologyRobot.h: an arc is a fixed wheel DIFFERENCE below cruise,
+// never cruise with one wheel boosted, or the radius balloons.
 void EthologyRobot::cruiseLeftArc() {
     driveProportional(ARC_INNER_SPEED, ARC_OUTER_SPEED, CRUISE_SECONDS);
 }
